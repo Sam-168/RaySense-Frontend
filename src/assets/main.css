@@ -1,0 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom CSS variables (backup for non-Tailwind usage) */
+:root {
+  --primary-50:  #E6F0FF;
+  --primary-100: #CCE0FF;
+  --primary-500: #0066FF;
+  --primary-600: #0052CC;
+  --primary-700: #003D99;
+  
+  --accent: #00F0FF;
+  --accent-dim: #00C7D4;
+  
+  --success: #10B981;
+  --success-light: #D1FAE5;
+  --warning: #F59E0B;
+  --warning-light: #FEF3C7;
+  --error: #EF4444;
+  --error-light: #FEE2E2;
+  
+  --black: #0A0A0A;
+  --white: #FFFFFF;
+  --gray-900: #1F2937;
+  --gray-700: #374151;
+  --gray-500: #6B7280;
+  --gray-300: #D1D5DB;
+  --gray-100: #F3F4F6;
+  --gray-50:  #F9FAFB;
+}
+html, body {
+  font-family: "Geist", sans-serif;
+}
+
+/* Custom component styles */
+@layer components {
+  .btn-primary {
+  @apply bg-primary-500 text-white px-6 py-3 rounded-lg font-semibold
+         hover:bg-primary-600 transition
+         shadow-sm hover:shadow-md;
+}
+  
+  .btn-secondary {
+  @apply bg-gray-800 text-white px-6 py-3 rounded-lg font-semibold
+         border border-gray-700 transition
+         hover:border-accent hover:text-accent;
+}
+  
+  .card {
+    @apply bg-white rounded-xl p-6 shadow-md;
+  }
+  
+  .input {
+  @apply w-full px-4 py-3 bg-gray-800 text-white 
+         border border-gray-700 rounded-lg
+         transition-all duration-200
+         focus:outline-none
+         focus:border-accent
+         focus:ring-2 focus:ring-accent/30;
+}
+}body {
+  @apply bg-gray-900 text-white;
+}
