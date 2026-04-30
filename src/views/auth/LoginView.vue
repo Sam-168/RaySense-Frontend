@@ -137,8 +137,8 @@ const errors = reactive({
 onMounted(() => {
   // If already logged in, redirect to home
   if (auth.isAuthenticated) {
-    router.push(auth.getHomeRoute())
-    return
+    router.replace(auth.getHomeRoute())
+    
   }
 
   // Check if redirected because session expired
