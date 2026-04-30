@@ -1,44 +1,125 @@
+// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import { useAuthStore } from '@/stores/auth'
+
+// ── Lazy-loaded views ────────────────────────────────
+const HomeView            = () => import('@/views/HomeView.vue')
+const LoginView           = () => import('@/views/auth/LoginView.vue')
+const RegisterView        = () => import('@/views/student/RegisterView.vue')
+const StudentDashboard    = () => import('@/views/student/DashboardView.vue')
+const MarkAttendanceView  = () => import('@/views/student/MarkAttendanceView.vue')
+const UnauthorizedView    = () => import('@/views/auth/UnauthorizedView.vue')
+// Lazy-loaded admin view
+const AdminDashboard      = () => import('@/views/admin/AdminDashboard.vue')
+
+// ── Route definitions ────────────────────────────────
+const routes = [
+
+  // ── Public routes (no login required) ──
+  {
+  path: '/',
+  name: 'Home',
+  component: HomeView
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: LoginView,
+    meta: { requiresGuest: true }   
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: RegisterView,
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/unauthorized',
+    name: 'Unauthorized',
+    component: UnauthorizedView
+  },
+
+  // ── Student routes ──
+  {
+    path: '/student/dashboard',
+    name: 'StudentDashboard',
+    component: StudentDashboard,
+    meta: {
+      requiresAuth: true,
+      roles: ['STUDENT']
+    }
+  },
+  {
+    path: '/attendance/mark',
+    name: 'MarkAttendance',
+    component: MarkAttendanceView,
+    meta: {
+      requiresAuth: true,
+      roles: ['STUDENT']
+    }
+  },
+  {
+  path: '/admin/dashboard',
+  name: 'AdminDashboard',
+  component: AdminDashboard,
+  meta: {
+    requiresAuth: true,
+    roles: ['ADMIN']
+  }
+  },
+
+  // ── Catch-all 404 ──
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/login'
+  }
+]
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      name: 'home',
-      component: HomeView,
-    },
-    {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
-    },
-    {
-      path: '/register',
-      name: 'register',
-      component: () => import('../views/student/RegisterView.vue')
-    },
-    {
-      path: '/attendance/mark',
-      name: 'mark attendance',
-      component: () => import('../views/student/MarkAttendanceView.vue')
-    },
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('../views/auth/LoginView.vue')
-      //meta: { requiresGuest: true }   // Redirect if already logged in
-    },
-    {
-    path: '/student/dashboard',
-      name: 'dashboard',
-      component: () => import('../views/student/DashboardView.vue')
+  routes
+})
+
+// ── Navigation Guard ─────────────────────────────────
+// Runs before EVERY route change
+router.beforeEach((to, from, next) => {
+  const auth = useAuthStore()
+
+  console.log('TO:', to.path)
+  console.log('isAuthenticated:', auth.isAuthenticated)
+  console.log('role:', auth.role)
+
+  // 1. Auth required routes
+  if (to.meta.requiresAuth) {
+    if (!auth.isAuthenticated) {
+      return next({ path: '/login', query: { reason: 'auth_required' } })
     }
-  ],
+
+    if (to.meta.roles && !to.meta.roles.includes(auth.role)) {
+      return next('/unauthorized')
+    }
+  }
+
+  // 2. Guest-only routes
+  if (to.meta.requiresGuest && auth.isAuthenticated) {
+    const target = auth.getHomeRoute()
+    console.log('Redirecting authenticated user to:', target)
+    // prevent loop
+    if (to.path === target) {
+      return next()
+    }
+
+    // safety: route exists check
+    const resolved = router.resolve(target)
+    if (!resolved.matched.length) {
+      return next('/login')
+    }
+
+    return next(target)
+  }
+
+  // 3. default allow
+  return next()
 })
 
 export default router
