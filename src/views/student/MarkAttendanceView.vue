@@ -89,7 +89,7 @@
         <!-- RESULT -->
         <div v-if="scanState === 'success'" class="result success">
           <h2>Attendance Marked</h2>
-          <p>{{ attendanceResult?.studentName || 'Student' }}</p>
+          <p>Hi {{ attendanceResult?.studentName || 'Student' }}</p>
         </div>
 
         <div v-if="scanState === 'error'" class="result error">
@@ -161,10 +161,17 @@ async function handleScan() {
   previewImage.value = `data:image/jpeg;base64,${base64}`
 
   try {
+    const token = localStorage.getItem('token') 
+
     const res = await axios.post(
       'http://localhost:8080/api/attendance/mark-by-face',
       base64,
-      { headers: { 'Content-Type': 'text/plain' } }
+      {
+        headers: {
+          'Content-Type': 'text/plain',
+          Authorization: `Bearer ${token}` // 🔐 IMPORTANT FIX
+        }
+      }
     )
 
     attendanceResult.value = res.data
