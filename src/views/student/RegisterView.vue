@@ -14,13 +14,15 @@
 
       <!-- Card -->
       <div class="register-card">
-
+      
         <!-- Title -->
         <div class="card-header">
           <h1 class="title">Register Student</h1>
           <p class="subtitle">Enroll a new student with biometric face data</p>
         </div>
-
+        <div v-if="apiError" class="banner-error">
+          {{ apiError }}
+        </div>
         <!-- FORM -->
         <form class="form" @submit.prevent="handleSubmit">
 
@@ -42,6 +44,29 @@
           <div class="field">
             <label>Class ID (optional)</label>
             <input v-model="form.classId" class="input" />
+          </div>
+          <!-- Email -->
+          <div class="field">
+            <label>Email</label>
+            <input
+              v-model="form.email"
+              type="email"
+              class="input"
+              placeholder="you@example.com"
+            />
+            <p v-if="errors.email" class="error">{{ errors.email }}</p>
+          </div>
+
+          <!-- Password -->
+          <div class="field">
+            <label>Password</label>
+            <input
+              v-model="form.password"
+              type="password"
+              class="input"
+              placeholder="Min 6 characters"
+            />
+            <p v-if="errors.password" class="error">{{ errors.password }}</p>
           </div>
 
           <!-- CAMERA -->
@@ -124,80 +149,126 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import axios from 'axios'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
 
-const video = ref(null)
-const stream = ref(null)
+const router = useRouter()
+const auth   = useAuthStore()
 
-const photo = ref(null)
+const video   = ref(null)
+const stream  = ref(null)
+const photo   = ref(null)
 const loading = ref(false)
+const apiError = ref('')
 
 const form = reactive({
-  fullName: '',
+  email:         '',
+  password:      '',
+  fullName:      '',
   studentNumber: '',
-  classId: ''
+  classId:       ''
 })
 
-const errors = reactive({})
+const errors = reactive({
+  email:         '',
+  password:      '',
+  fullName:      '',
+  studentNumber: ''
+})
 
-// Camera setup
+// Start camera
 onMounted(async () => {
-  stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
-  video.value.srcObject = stream.value
+  try {
+    stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
+    video.value.srcObject = stream.value
+  } catch (err) {
+    apiError.value = 'Camera access denied. Please allow camera access.'
+  }
 })
 
-// Capture
 const capturePhoto = () => {
   const canvas = document.createElement('canvas')
-  canvas.width = video.value.videoWidth
+  canvas.width  = video.value.videoWidth
   canvas.height = video.value.videoHeight
-
-  const ctx = canvas.getContext('2d')
-  ctx.drawImage(video.value, 0, 0)
-
+  canvas.getContext('2d').drawImage(video.value, 0, 0)
   photo.value = canvas.toDataURL('image/jpeg')
 }
 
-// Retake
-const retake = () => {
-  photo.value = null
-}
+const retake = () => { photo.value = null }
 
 // Validation
 const validate = () => {
-  errors.fullName = form.fullName.length < 2 ? "Name too short" : ""
-  errors.studentNumber = form.studentNumber.length < 3 ? "Invalid student number" : ""
+  errors.email         = ''
+  errors.password      = ''
+  errors.fullName      = ''
+  errors.studentNumber = ''
+  apiError.value       = ''
 
-  return !errors.fullName && !errors.studentNumber
+  let valid = true
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+  if (!form.email || !emailRegex.test(form.email)) {
+    errors.email = 'Valid email is required'
+    valid = false
+  }
+  if (!form.password || form.password.length < 6) {
+    errors.password = 'Password must be at least 6 characters'
+    valid = false
+  }
+  if (form.fullName.length < 2) {
+    errors.fullName = 'Name too short'
+    valid = false
+  }
+  if (form.studentNumber.length < 3) {
+    errors.studentNumber = 'Invalid student number'
+    valid = false
+  }
+
+  return valid
 }
 
 // Submit
 const handleSubmit = async () => {
   if (!validate()) return
-  if (!photo.value) return alert("Please capture a photo")
+  if (!photo.value) return (apiError.value = 'Please capture a photo first')
 
   loading.value = true
 
   try {
     const payload = {
-      fullName: form.fullName,
+      email:         form.email,
+      password:      form.password,
+      fullName:      form.fullName,
       studentNumber: form.studentNumber,
-      classId: form.classId,
-      photo: photo.value.split(',')[1]
+      classId:       form.classId,
+      photo:         photo.value.split(',')[1]  // strip base64 prefix
     }
 
-    await axios.post('http://localhost:8080/api/students/register-with-photo', payload)
+    // Hits POST /api/students/register-with-photo
+    const response = await api.post('/students/register-with-photo', payload)
 
-    alert("Student registered successfully!")
+    // Auto-login: store the token + user returned from backend
+    const { token, ...userData } = response.data
+    auth.setSession(token, userData)
 
-    form.fullName = ''
-    form.studentNumber = ''
-    form.classId = ''
-    photo.value = null
+    // Stop camera
+    stream.value?.getTracks().forEach(t => t.stop())
+
+    // Redirect to student dashboard
+    router.push('/student/dashboard')
 
   } catch (err) {
-    console.error(err)
-    alert("Registration failed")
+    const status  = err.response?.status
+    const message = err.response?.data?.message
+
+    if (status === 409) {
+      apiError.value = message || 'Email or student number already exists'
+    } else if (status === 422) {
+      apiError.value = message || 'Face registration failed. Please retake photo.'
+    } else {
+      apiError.value = message || 'Registration failed. Please try again.'
+    }
   } finally {
     loading.value = false
   }
@@ -464,5 +535,14 @@ const handleSubmit = async () => {
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.banner-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 14px;
 }
 </style>
