@@ -1,209 +1,258 @@
 <template>
-  <div class="dashboard">
+  <div class="dashboard-page">
 
-    <!-- SIDEBAR / TOPBAR (RESPONSIVE) -->
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="dot"></div>
-        <span>RaySense</span>
+    <!-- HEADER -->
+    <header class="page-header">
+      <div class="logo-mark">
+        <div class="logo-dot"></div>
+        <span class="logo-text">RaySense</span>
+      </div>
+      <div class="header-right">
+        <span class="welcome-text">{{ auth.fullName }}</span>
+        <button class="logout-btn" @click="handleLogout">Logout</button>
+      </div>
+    </header>
+
+    <main class="page-main">
+
+      <!-- LOADING -->
+      <div v-if="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading your attendance...</p>
       </div>
 
-      <nav class="nav">
-        <button class="nav-item active">Dashboard</button>
+      <!-- ERROR -->
+      <div v-else-if="error" class="banner-error">{{ error }}</div>
 
-        <router-link to="/attendance/mark" class="nav-item">
+      <!-- CONTENT -->
+      <div v-else class="content">
+
+        <!-- STUDENT INFO -->
+        <div class="student-info">
+          <h1 class="title">Welcome back, {{ data.studentName }}</h1>
+          <p class="subtitle">{{ data.studentNumber }} · {{ data.classId || 'No class assigned' }}</p>
+        </div>
+
+        <!-- STATS CARDS -->
+        <div class="stats-grid">
+
+          <div class="stat-card">
+            <p class="stat-label">Attendance Rate</p>
+            <p class="stat-value cyan">{{ data.attendancePercentage }}%</p>
+          </div>
+
+          <div class="stat-card">
+            <p class="stat-label">Days Present</p>
+            <p class="stat-value">{{ data.totalPresent }}</p>
+          </div>
+
+          <div class="stat-card">
+            <p class="stat-label">Total Sessions</p>
+            <p class="stat-value">{{ data.totalRecords }}</p>
+          </div>
+
+        </div>
+
+        <!-- MARK ATTENDANCE BUTTON -->
+        <router-link to="/attendance/mark" class="mark-btn">
           Mark Attendance
         </router-link>
-      </nav>
-    </aside>
 
-    <!-- MAIN -->
-    <main class="main">
+        <!-- ATTENDANCE RECORDS -->
+        <div class="records-section">
+          <h2 class="section-title">Recent Attendance</h2>
 
-      <!-- TOP BAR -->
-      <div class="topbar">
-        <div>
-          <h1 class="title">Student Dashboard</h1>
-          <p class="subtitle">Attendance overview & history</p>
+          <!-- EMPTY STATE -->
+          <div v-if="data.records.length === 0" class="empty-state">
+            <p>No attendance records yet.</p>
+            <p class="empty-sub">Mark your first attendance above!</p>
+          </div>
+
+          <!-- RECORDS LIST -->
+          <div v-else class="records-list">
+            <div
+              v-for="record in data.records"
+              :key="record.id"
+              class="record-row"
+            >
+              <div class="record-left">
+                <span class="status-dot" :class="record.status === 'PRESENT' ? 'green' : 'red'"></span>
+                <div>
+                  <p class="record-date">{{ formatDate(record.date) }}</p>
+                  <p class="record-time">{{ formatTime(record.time) }}</p>
+                </div>
+              </div>
+              <span class="record-status" :class="record.status === 'PRESENT' ? 'present' : 'absent'">
+                {{ record.status }}
+              </span>
+            </div>
+          </div>
+
         </div>
 
-        <div class="student-chip">
-          ID: {{ student?.studentNumber || "Loading..." }}
-        </div>
       </div>
 
-      <!-- PROFILE CARD -->
-      <section class="card profile">
-        <h2>{{ student?.fullName }}</h2>
-        <p>{{ student?.studentNumber }}</p>
-        <p class="muted">Class: {{ student?.classId || "N/A" }}</p>
-      </section>
-
-      <!-- STATS -->
-      <section class="stats">
-        <div class="stat">
-          <h3>{{ stats.daysPresent || 0 }}</h3>
-          <p>Days Present</p>
-        </div>
-
-        <div class="stat highlight">
-          <h3>{{ stats.attendancePercentage || 0 }}%</h3>
-          <p>Attendance</p>
-        </div>
-
-        <div class="stat">
-          <h3>{{ stats.totalDays || 0 }}</h3>
-          <p>Total Days</p>
-        </div>
-      </section>
-
-      <!-- HISTORY -->
-      <section class="card">
-        <h2>Attendance History</h2>
-
-        <div v-if="attendance.length === 0" class="empty">
-          No attendance records yet.
-        </div>
-
-        <div v-for="a in attendance" :key="a.id" class="attendance-row">
-          <div>
-            <p class="date">{{ a.date || "Unknown Date" }}</p>
-            <p class="time">{{ a.time || "—" }}</p>
-          </div>
-
-          <div class="status" :class="a.status">
-            {{ a.status || "PRESENT" }}
-          </div>
-        </div>
-      </section>
-
     </main>
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
 
-const student = ref(null)
-const attendance = ref([])
-const stats = ref({})
+const router = useRouter()
+const auth   = useAuthStore()
 
-// 👉 replace with logged-in student number later
-const studentNumber = "20240001"
+const loading = ref(true)
+const error   = ref('')
+const data    = ref({
+  studentName: '',
+  studentNumber: '',
+  classId: '',
+  totalPresent: 0,
+  totalRecords: 0,
+  attendancePercentage: 0,
+  records: []
+})
 
+// Fetch attendance data on mount
 onMounted(async () => {
   try {
-    const studentRes = await axios.get(
-      `http://localhost:8080/api/students/number/${studentNumber}`
-    )
-    student.value = studentRes.data
-
-    const studentId = student.value.id
-
-    const attRes = await axios.get(
-      `http://localhost:8080/api/attendance/student/${studentId}`
-    )
-    attendance.value = attRes.data
-
-    const today = new Date()
-    const start = new Date()
-    start.setDate(today.getDate() - 30)
-
-    const statsRes = await axios.get(
-      `http://localhost:8080/api/attendance/student/${studentId}/stats`,
-      {
-        params: {
-          startDate: start.toISOString().split("T")[0],
-          endDate: today.toISOString().split("T")[0],
-          totalDays: 30
-        }
-      }
-    )
-
-    stats.value = statsRes.data
-
+    const response = await api.get('/attendance/my-attendance')
+    data.value = response.data
   } catch (err) {
-    console.error(err)
+    error.value = err.response?.data?.message || 'Failed to load attendance data'
+  } finally {
+    loading.value = false
   }
 })
+
+// Format date: 2026-04-25 → Fri, 25 Apr 2026
+const formatDate = (dateStr) => {
+  return new Date(dateStr).toLocaleDateString('en-ZA', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+  })
+}
+
+// Format time: 08:30:00 → 08:30 AM
+const formatTime = (timeStr) => {
+  const [h, m] = timeStr.split(':')
+  const date = new Date()
+  date.setHours(+h, +m)
+  return date.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })
+}
+
+const handleLogout = () => {
+  auth.clearSession()
+  router.push('/login')
+}
 </script>
 
 <style scoped>
-/* ========== LAYOUT ========== */
-.dashboard {
-  display: flex;
+.dashboard-page {
   min-height: 100vh;
   background: radial-gradient(circle at top, #0b0f14, #05070a);
   color: white;
 }
 
-/* ========== SIDEBAR ========== */
-.sidebar {
-  width: 220px;
-  padding: 20px;
-  border-right: 1px solid rgba(255,255,255,0.05);
-  background: rgba(255,255,255,0.02);
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 22px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
-.brand {
+.logo-mark {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 700;
-  margin-bottom: 30px;
+  gap: 10px;
 }
 
-.dot {
+.logo-dot {
   width: 10px;
   height: 10px;
   background: #00F0FF;
   border-radius: 50%;
-  box-shadow: 0 0 10px #00F0FF;
+  box-shadow: 0 0 12px #00F0FF;
 }
 
-.nav {
+.logo-text { font-weight: 700; }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.welcome-text {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.logout-btn {
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  border-color: rgba(239,68,68,0.4);
+  color: #f87171;
+}
+
+.page-main {
+  padding: 32px 16px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* LOADING */
+.loading-state {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.nav-item {
-  padding: 10px;
-  border-radius: 8px;
-  color: #9ca3af;
-  text-decoration: none;
-  background: transparent;
-  border: 1px solid transparent;
-}
-
-.nav-item.active,
-.nav-item:hover {
-  color: #00F0FF;
-  border-color: rgba(0,240,255,0.2);
-  background: rgba(0,240,255,0.05);
-}
-
-/* ========== MAIN ========== */
-.main {
-  flex: 1;
-  padding: 24px;
-  min-width: 0;
-}
-
-/* ========== TOPBAR ========== */
-.topbar {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 16px;
+  margin-top: 80px;
+  color: #9ca3af;
 }
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(0,240,255,0.2);
+  border-top-color: #00F0FF;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ERROR */
+.banner-error {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #f87171;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+}
+
+/* STUDENT INFO */
+.student-info { margin-bottom: 24px; }
 
 .title {
   font-size: 22px;
   font-weight: 700;
+  margin-bottom: 4px;
 }
 
 .subtitle {
@@ -211,125 +260,141 @@ onMounted(async () => {
   color: #9ca3af;
 }
 
-.student-chip {
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(0,240,255,0.08);
-  border: 1px solid rgba(0,240,255,0.2);
-  color: #00F0FF;
-  font-size: 12px;
-}
-
-/* ========== CARD ========== */
-.card {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(0,240,255,0.08);
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-
-.profile h2 {
-  margin: 0;
-}
-
-.muted {
-  color: #9ca3af;
-  font-size: 13px;
-}
-
-/* ========== STATS ========== */
-.stats {
+/* STATS */
+.stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
-.stat {
-  padding: 14px;
+.stat-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
   border-radius: 12px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.05);
+  padding: 16px 12px;
   text-align: center;
 }
 
-.stat h3 {
-  margin: 0;
-  font-size: 20px;
+.stat-label {
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 8px;
 }
 
-.stat p {
-  font-size: 12px;
-  color: #9ca3af;
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
 }
 
-.stat.highlight {
-  border-color: rgba(0,240,255,0.25);
-  box-shadow: 0 0 15px rgba(0,240,255,0.05);
+.stat-value.cyan { color: #00F0FF; }
+
+/* MARK ATTENDANCE BUTTON */
+.mark-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(0,240,255,0.25);
+  color: #00F0FF;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  margin-bottom: 28px;
+  transition: all 0.2s;
 }
 
-/* ========== HISTORY ========== */
-.attendance-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+.mark-btn:hover {
+  border-color: rgba(0,240,255,0.6);
+  box-shadow: 0 0 12px rgba(0,240,255,0.15);
 }
 
-.date {
+/* RECORDS */
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #d1d5db;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+  color: #6b7280;
   font-size: 14px;
 }
 
-.time {
+.empty-sub {
   font-size: 12px;
-  color: #9ca3af;
+  margin-top: 6px;
 }
 
-.status {
-  font-size: 12px;
-  color: #00F0FF;
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* ========== RESPONSIVE FIXES ========== */
-@media (max-width: 900px) {
-  .stats {
-    grid-template-columns: 1fr;
-  }
+.record-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 12px 16px;
 }
 
-@media (max-width: 768px) {
-  .dashboard {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-right: none;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-  }
-
-  .nav {
-    flex-direction: row;
-  }
-
-  .brand {
-    margin-bottom: 0;
-  }
+.record-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-@media (max-width: 480px) {
-  .topbar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 
-  .attendance-row {
-    flex-direction: column;
-    gap: 5px;
-  }
+.status-dot.green { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.status-dot.red   { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+
+.record-date {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.record-time {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.record-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.record-status.present {
+  background: rgba(16,185,129,0.1);
+  color: #34d399;
+  border: 1px solid rgba(16,185,129,0.2);
+}
+
+.record-status.absent {
+  background: rgba(239,68,68,0.1);
+  color: #f87171;
+  border: 1px solid rgba(239,68,68,0.2);
+}
+
+/* RESPONSIVE */
+@media (max-width: 400px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-value { font-size: 20px; }
 }
 </style>
