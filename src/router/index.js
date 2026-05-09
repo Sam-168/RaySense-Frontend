@@ -11,6 +11,7 @@ const MarkAttendanceView  = () => import('@/views/student/MarkAttendanceView.vue
 const UnauthorizedView    = () => import('@/views/auth/UnauthorizedView.vue')
 // Lazy-loaded admin view
 const AdminDashboard      = () => import('@/views/admin/AdminDashboard.vue')
+const LecturerDashboard = () => import('@/views/lecturer/LecturerDashboardView.vue')
 
 // ── Route definitions ────────────────────────────────
 const routes = [
@@ -47,6 +48,15 @@ const routes = [
     meta: {
       requiresAuth: true,
       roles: ['STUDENT']
+    }
+  },
+  {
+    path: '/lecturer/dashboard',
+    name: 'LecturerDashboard',
+    component: LecturerDashboard,
+    meta: {
+      requiresAuth: true,
+      roles: ['LECTURER']
     }
   },
   {
