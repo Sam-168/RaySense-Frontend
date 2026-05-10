@@ -7,9 +7,12 @@
         <div class="logo-dot"></div>
         <span class="logo-text">RaySense</span>
       </div>
+
       <div class="header-right">
         <span class="welcome-text">{{ auth.fullName }}</span>
-        <button class="logout-btn" @click="handleLogout">Logout</button>
+        <button class="logout-btn" @click="handleLogout">
+          Logout
+        </button>
       </div>
     </header>
 
@@ -22,15 +25,24 @@
       </div>
 
       <!-- ERROR -->
-      <div v-else-if="error" class="banner-error">{{ error }}</div>
+      <div v-else-if="error" class="banner-error">
+        {{ error }}
+      </div>
 
       <!-- CONTENT -->
       <div v-else class="content">
 
         <!-- STUDENT INFO -->
         <div class="student-info">
-          <h1 class="title">Welcome back, {{ data.studentName }}</h1>
-          <p class="subtitle">{{ data.studentNumber }} · {{ data.classId || 'No class assigned' }}</p>
+          <h1 class="title">
+            Welcome back, {{ data.studentName }}
+          </h1>
+
+          <p class="subtitle">
+            {{ data.studentNumber }}
+            ·
+            {{ data.classId || 'No class assigned' }}
+          </p>
         </div>
 
         <!-- STATS CARDS -->
@@ -38,54 +50,172 @@
 
           <div class="stat-card">
             <p class="stat-label">Attendance Rate</p>
-            <p class="stat-value cyan">{{ data.attendancePercentage }}%</p>
+            <p class="stat-value cyan">
+              {{ data.attendancePercentage }}%
+            </p>
           </div>
 
           <div class="stat-card">
             <p class="stat-label">Days Present</p>
-            <p class="stat-value">{{ data.totalPresent }}</p>
+            <p class="stat-value">
+              {{ data.totalPresent }}
+            </p>
           </div>
 
           <div class="stat-card">
             <p class="stat-label">Total Sessions</p>
-            <p class="stat-value">{{ data.totalRecords }}</p>
+            <p class="stat-value">
+              {{ data.totalRecords }}
+            </p>
+          </div>
+
+        </div>
+
+        <!-- ACTIVE SESSIONS -->
+        <div class="sessions-section">
+
+          <h2 class="section-title">
+            Active Sessions
+          </h2>
+
+          <!-- Loading sessions -->
+          <div v-if="loadingSessions" class="sessions-loading">
+            <div class="spinner-sm"></div>
+          </div>
+
+          <!-- No active sessions -->
+          <div
+            v-else-if="activeSessions.length === 0"
+            class="no-sessions"
+          >
+            <p>No active sessions right now.</p>
+
+            <p class="no-sessions-sub">
+              Your lecturer will start one when class begins.
+            </p>
+          </div>
+
+          <!-- Session cards -->
+          <div v-else class="sessions-list">
+
+            <div
+              v-for="session in activeSessions"
+              :key="session.sessionId"
+              class="session-card"
+            >
+
+              <div class="session-card-left">
+
+                <span class="session-module">
+                  {{ session.sectionName }}
+                </span>
+
+                <p class="session-module-name">
+                  {{ session.moduleName }}
+                </p>
+
+                <p class="session-lecturer">
+                  Dr. {{ session.lecturerName }}
+                </p>
+
+              </div>
+
+              <div class="session-card-right">
+
+                <span
+                  v-if="session.alreadyMarked"
+                  class="marked-badge"
+                >
+                  ✓ Marked
+                </span>
+
+                <router-link
+  v-else
+  :to="{
+    name: 'MarkAttendance',
+    params: { sessionId: session.sessionId }
+  }"
+  class="attend-btn"
+>
+  Mark Attendance
+</router-link>
+
+              </div>
+
+            </div>
+
           </div>
 
         </div>
 
         <!-- MARK ATTENDANCE BUTTON -->
-        <router-link to="/attendance/mark" class="mark-btn">
+        <router-link
+          to="/attendance/mark"
+          class="mark-btn"
+        >
           Mark Attendance
         </router-link>
 
         <!-- ATTENDANCE RECORDS -->
         <div class="records-section">
-          <h2 class="section-title">Recent Attendance</h2>
+
+          <h2 class="section-title">
+            Recent Attendance
+          </h2>
 
           <!-- EMPTY STATE -->
-          <div v-if="data.records.length === 0" class="empty-state">
+          <div
+            v-if="data.records.length === 0"
+            class="empty-state"
+          >
             <p>No attendance records yet.</p>
-            <p class="empty-sub">Mark your first attendance above!</p>
+
+            <p class="empty-sub">
+              Mark your first attendance above!
+            </p>
           </div>
 
           <!-- RECORDS LIST -->
           <div v-else class="records-list">
+
             <div
               v-for="record in data.records"
               :key="record.id"
               class="record-row"
             >
+
               <div class="record-left">
-                <span class="status-dot" :class="record.status === 'PRESENT' ? 'green' : 'red'"></span>
+
+                <span
+                  class="status-dot"
+                  :class="record.status === 'PRESENT'
+                    ? 'green'
+                    : 'red'"
+                ></span>
+
                 <div>
-                  <p class="record-date">{{ formatDate(record.date) }}</p>
-                  <p class="record-time">{{ formatTime(record.time) }}</p>
+                  <p class="record-date">
+                    {{ formatDate(record.date) }}
+                  </p>
+
+                  <p class="record-time">
+                    {{ formatTime(record.time) }}
+                  </p>
                 </div>
+
               </div>
-              <span class="record-status" :class="record.status === 'PRESENT' ? 'present' : 'absent'">
+
+              <span
+                class="record-status"
+                :class="record.status === 'PRESENT'
+                  ? 'present'
+                  : 'absent'"
+              >
                 {{ record.status }}
               </span>
+
             </div>
+
           </div>
 
         </div>
@@ -96,19 +226,23 @@
 
   </div>
 </template>
-
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 
 const router = useRouter()
-const auth   = useAuthStore()
+const auth = useAuthStore()
+
+/* -----------------------------
+   STATE
+----------------------------- */
 
 const loading = ref(true)
-const error   = ref('')
-const data    = ref({
+const error = ref('')
+
+const data = ref({
   studentName: '',
   studentNumber: '',
   classId: '',
@@ -118,32 +252,101 @@ const data    = ref({
   records: []
 })
 
-// Fetch attendance data on mount
+/* -----------------------------
+   ACTIVE SESSIONS
+----------------------------- */
+
+const loadingSessions = ref(true)
+const activeSessions = ref([])
+
+/* -----------------------------
+   FETCH ACTIVE SESSIONS
+----------------------------- */
+
+const fetchActiveSessions = async () => {
+  try {
+    const response = await api.get('/attendance/active-sessions')
+    console.log(response.data)
+    activeSessions.value = response.data
+  } catch (err) {
+    console.error('Failed to load active sessions', err)
+  } finally {
+    loadingSessions.value = false
+  }
+}
+
+/* -----------------------------
+   SESSION POLLING
+----------------------------- */
+
+let sessionPollTimer = null
+
+/* -----------------------------
+   FETCH DATA ON MOUNT
+----------------------------- */
+
 onMounted(async () => {
+
+  // Load attendance dashboard
   try {
     const response = await api.get('/attendance/my-attendance')
     data.value = response.data
   } catch (err) {
-    error.value = err.response?.data?.message || 'Failed to load attendance data'
+    error.value =
+      err.response?.data?.message ||
+      'Failed to load attendance data'
   } finally {
     loading.value = false
   }
+
+  // Load active sessions
+  await fetchActiveSessions()
+
+  // Poll every 10 seconds
+  sessionPollTimer = setInterval(fetchActiveSessions, 10000)
+
 })
+
+/* -----------------------------
+   CLEANUP
+----------------------------- */
+
+onUnmounted(() => {
+  if (sessionPollTimer) {
+    clearInterval(sessionPollTimer)
+  }
+})
+
+/* -----------------------------
+   FORMATTERS
+----------------------------- */
 
 // Format date: 2026-04-25 → Fri, 25 Apr 2026
 const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString('en-ZA', {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
   })
 }
 
 // Format time: 08:30:00 → 08:30 AM
 const formatTime = (timeStr) => {
   const [h, m] = timeStr.split(':')
+
   const date = new Date()
   date.setHours(+h, +m)
-  return date.toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })
+
+  return date.toLocaleTimeString('en-ZA', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
+
+/* -----------------------------
+   LOGOUT
+----------------------------- */
 
 const handleLogout = () => {
   auth.clearSession()
@@ -391,6 +594,90 @@ const handleLogout = () => {
   color: #f87171;
   border: 1px solid rgba(239,68,68,0.2);
 }
+/* SESSIONS SECTION */
+.sessions-section { margin-bottom: 28px; }
+
+.sessions-loading {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.spinner-sm {
+  width: 20px; height: 20px;
+  border: 2px solid rgba(0,240,255,0.2);
+  border-top-color: #00F0FF;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.no-sessions {
+  text-align: center;
+  padding: 24px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 12px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.no-sessions-sub {
+  font-size: 12px;
+  margin-top: 4px;
+  color: #4b5563;
+}
+
+.sessions-list { display: flex; flex-direction: column; gap: 10px; }
+
+.session-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0,102,255,0.05);
+  border: 1px solid rgba(0,102,255,0.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.session-module {
+  font-size: 12px;
+  font-weight: 700;
+  color: #00F0FF;
+  background: rgba(0,240,255,0.08);
+  border: 1px solid rgba(0,240,255,0.2);
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.session-module-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+
+.session-lecturer { font-size: 12px; color: #9ca3af; }
+
+.marked-badge {
+  font-size: 12px;
+  color: #10b981;
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.2);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.attend-btn {
+  font-size: 12px;
+  color: white;
+  background: #0066FF;
+  padding: 8px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.attend-btn:hover { background: #0052CC; }
 
 /* RESPONSIVE */
 @media (max-width: 400px) {
