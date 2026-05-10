@@ -12,6 +12,7 @@ const UnauthorizedView    = () => import('@/views/auth/UnauthorizedView.vue')
 // Lazy-loaded admin view
 const AdminDashboard      = () => import('@/views/admin/AdminDashboard.vue')
 const LecturerDashboard = () => import('@/views/lecturer/LecturerDashboardView.vue')
+const ActiveSessionView  = () => import('@/views/lecturer/ActiveSessionView.vue')
 
 // ── Route definitions ────────────────────────────────
 const routes = [
@@ -51,6 +52,13 @@ const routes = [
     }
   },
   {
+    path: '/student/mark-attendance/:sessionId',
+    name: 'MarkAttendance',
+    component: MarkAttendanceView,
+    meta: { requiresAuth: true,
+           roles: ['STUDENT'] }
+  },
+  {
     path: '/lecturer/dashboard',
     name: 'LecturerDashboard',
     component: LecturerDashboard,
@@ -60,8 +68,16 @@ const routes = [
     }
   },
   {
+  path: '/lecturer/sessions/:sessionId/live',
+  name: 'ActiveSession',
+  component: ActiveSessionView,
+  meta: { 
+    requiresAuth: true,
+    roles: ['LECTURER'] }
+  },
+  {
     path: '/attendance/mark',
-    name: 'MarkAttendance',
+    name: 'QuickMarkAttendance',
     component: MarkAttendanceView,
     meta: {
       requiresAuth: true,

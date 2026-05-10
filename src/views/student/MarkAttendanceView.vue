@@ -1,100 +1,97 @@
 <template>
-  <div class="page">
+  <div class="mark-page">
 
     <!-- HEADER -->
-    <header class="header">
-      <div class="brand">
-        <div class="dot"></div>
+    <header class="page-header">
+      <div class="logo-mark">
+        <div class="logo-dot"></div>
+        <span class="logo-text">RaySense</span>
+      </div>
+      <button class="back-btn" @click="$router.push('/student/dashboard')">
+        ← Back
+      </button>
+    </header>
+
+    <main class="page-main">
+
+      <!-- SESSION INFO -->
+      <div v-if="sessionInfo" class="session-banner">
         <div>
-          <h1>RaySense</h1>
-          <p>Biometric Verification Module</p>
+          <span class="session-module">{{ sessionInfo.sectionName }}</span>
+          <p class="session-name">{{ sessionInfo.moduleName }}</p>
+          <p class="session-lecturer">{{ sessionInfo.lecturerName }}</p>
+        </div>
+        <div class="pulse-wrap">
+          <span class="pulse-dot"></span>
+          <span class="live-text">LIVE</span>
         </div>
       </div>
 
-      <div class="time">
-        {{ now }}
+      <!-- SUCCESS STATE -->
+      <div v-if="success" class="success-state">
+        <div class="success-icon">✓</div>
+        <h2 class="success-title">Attendance Marked!</h2>
+        <p class="success-sub">{{ successMessage }}</p>
+        <button class="done-btn" @click="$router.push('/student/dashboard')">
+          Back to Dashboard
+        </button>
       </div>
-    </header>
 
-    <!-- MAIN -->
-    <main class="main">
+      <!-- CAMERA -->
+      <div v-else class="camera-section">
 
-      <div class="container">
-
-        <!-- CAMERA BOX -->
-        <div class="camera">
+        <div class="camera-frame">
 
           <!-- VIDEO -->
           <video
-            v-if="scanState !== 'success'"
-            ref="videoRef"
+            v-if="!photo"
+            ref="video"
             autoplay
             playsinline
-            muted
+            class="video"
           ></video>
 
-          <!-- SUCCESS IMAGE -->
-          <img
-            v-else
-            :src="previewImage"
-          />
+          <!-- PHOTO PREVIEW -->
+          <img v-else :src="photo" class="video" />
 
-          <!-- OVERLAY -->
-          <div v-if="scanState !== 'success'" class="overlay">
-
-            <div class="frame">
-
-              <!-- SCAN LINE -->
-              <div v-if="scanState === 'scanning'" class="scan-line"></div>
-
-              <!-- CORNERS -->
-              <div class="corner tl"></div>
-              <div class="corner tr"></div>
-              <div class="corner bl"></div>
-              <div class="corner br"></div>
-
+          <!-- SCANNER OVERLAY -->
+          <div v-if="!photo" class="scanner-overlay">
+            <div class="scanner-box">
+              <div class="scanner-line"></div>
             </div>
+            <p class="scanner-text">Align your face in the frame</p>
+          </div>
 
-            <p class="status">{{ statusText }}</p>
-
+          <!-- PROCESSING OVERLAY -->
+          <div v-if="processing" class="processing-overlay">
+            <div class="spinner"></div>
+            <p>Verifying identity...</p>
           </div>
 
         </div>
 
+        <!-- ERROR -->
+        <div v-if="error" class="banner-error">{{ error }}</div>
+
         <!-- BUTTONS -->
-        <div class="actions">
-
+        <div class="btn-row">
           <button
-            class="btn-primary flex-1"
-            @click="handleScan"
-            :disabled="scanState === 'scanning'"
+            v-if="!photo"
+            class="capture-btn"
+            @click="capturePhoto"
+            :disabled="!cameraReady"
           >
-            <span v-if="scanState !== 'scanning'">Scan Face</span>
-
-            <span v-else class="loading">
-              <span class="spinner"></span>
-              Scanning...
-            </span>
+            📸 Capture
           </button>
 
-          <button
-            class="btn-secondary"
-            @click="resetToIdle"
-          >
-            Reset
-          </button>
-
-        </div>
-
-        <!-- RESULT -->
-        <div v-if="scanState === 'success'" class="result success">
-          <h2>Attendance Marked</h2>
-          <p>Hi {{ attendanceResult?.studentName || 'Student' }}</p>
-        </div>
-
-        <div v-if="scanState === 'error'" class="result error">
-          <h2>Scan Failed</h2>
-          <p>{{ errorMessage }}</p>
+          <template v-else>
+            <button class="retake-btn" @click="retake" :disabled="processing">
+              Retake
+            </button>
+            <button class="submit-btn" @click="submitAttendance" :disabled="processing">
+              {{ processing ? 'Verifying...' : 'Submit' }}
+            </button>
+          </template>
         </div>
 
       </div>
@@ -105,323 +102,376 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
-import axios from 'axios'
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import api from '@/services/api'
 
-const videoRef = ref(null)
-let stream = null
+const route  = useRoute()
+const router = useRouter()
 
-const scanState = ref('idle')
-const previewImage = ref(null)
-const attendanceResult = ref(null)
-const errorMessage = ref('')
-const statusText = ref('Position your face inside the frame')
+const sessionId = route.params.sessionId
 
-const now = computed(() =>
-  new Date().toLocaleString()
-)
+const video       = ref(null)
+const stream      = ref(null)
+const photo       = ref(null)
+const cameraReady = ref(false)
+const processing  = ref(false)
+const error       = ref('')
+const success     = ref(false)
+const successMessage = ref('')
+const sessionInfo = ref(null)
 
-// CAMERA
+// ── Load session info ────────────────────────────────────────────────────────
 onMounted(async () => {
+  // Load session details from active sessions
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: true })
-    videoRef.value.srcObject = stream
-  } catch (e) {
-    scanState.value = 'error'
-    errorMessage.value = 'Camera access denied or unavailable'
+    const response = await api.get('/attendance/active-sessions')
+    const sessions = response.data
+    sessionInfo.value = sessions.find(s => s.sessionId == sessionId) || null
+
+    if (!sessionInfo.value) {
+      error.value = 'This session is no longer active.'
+      return
+    }
+  } catch (err) {
+    error.value = 'Failed to load session info.'
+  }
+
+  // Start camera
+  try {
+    stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
+    video.value.srcObject = stream.value
+    video.value.onloadedmetadata = () => { cameraReady.value = true }
+  } catch (err) {
+    error.value = 'Camera access denied. Please allow camera and refresh.'
   }
 })
 
-onBeforeUnmount(() => {
-  if (stream) stream.getTracks().forEach(t => t.stop())
+// Stop camera on unmount
+onUnmounted(() => {
+  stream.value?.getTracks().forEach(t => t.stop())
 })
 
-// CAPTURE
-function captureFrame() {
-  const video = videoRef.value
+// ── Capture ──────────────────────────────────────────────────────────────────
+const capturePhoto = () => {
   const canvas = document.createElement('canvas')
-
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
-
-  const ctx = canvas.getContext('2d')
-  ctx.drawImage(video, 0, 0)
-
-  return canvas.toDataURL('image/jpeg').split(',')[1]
+  canvas.width  = video.value.videoWidth
+  canvas.height = video.value.videoHeight
+  canvas.getContext('2d').drawImage(video.value, 0, 0)
+  photo.value = canvas.toDataURL('image/jpeg')
+  error.value = ''
 }
 
-// SCAN
-async function handleScan() {
-  if (scanState.value === 'scanning') return
+const retake = () => {
+  photo.value = null
+  error.value = ''
+}
 
-  scanState.value = 'scanning'
-  statusText.value = 'Scanning biometric data...'
-
-  const base64 = captureFrame()
-  previewImage.value = `data:image/jpeg;base64,${base64}`
+// ── Submit ───────────────────────────────────────────────────────────────────
+const submitAttendance = async () => {
+  processing.value = true
+  error.value = ''
 
   try {
-    const token = localStorage.getItem('token') 
+    // Convert base64 to blob for multipart upload
+    const base64Data = photo.value.split(',')[1]
+    const byteCharacters = atob(base64Data)
+    const byteArray = new Uint8Array(byteCharacters.length)
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteArray[i] = byteCharacters.charCodeAt(i)
+    }
+    const blob = new Blob([byteArray], { type: 'image/jpeg' })
 
-    const res = await axios.post(
-      'http://localhost:8080/api/attendance/mark-by-face',
-      base64,
-      {
-        headers: {
-          'Content-Type': 'text/plain',
-          Authorization: `Bearer ${token}` // 🔐 IMPORTANT FIX
-        }
-      }
+    const formData = new FormData()
+    formData.append('photo', blob, 'attendance.jpg')
+
+    const response = await api.post(
+      `/attendance/sessions/${sessionId}/mark-by-face`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     )
 
-    attendanceResult.value = res.data
-    scanState.value = 'success'
-    statusText.value = 'Access Granted'
+    const result = response.data
+
+    if (result.success) {
+      success.value = true
+      successMessage.value = `${result.moduleName} · ${result.time}`
+      // Stop camera
+      stream.value?.getTracks().forEach(t => t.stop())
+    } else {
+      error.value = result.message
+      photo.value = null  // Reset to retake
+    }
 
   } catch (err) {
-    scanState.value = 'error'
-    errorMessage.value =
-      err.response?.data?.message || 'Face not recognized or server error'
-
-    statusText.value = 'Access Denied'
+    error.value = err.response?.data?.message || 'Something went wrong. Please try again.'
+    photo.value = null
+  } finally {
+    processing.value = false
   }
-}
-
-// RESET
-function resetToIdle() {
-  scanState.value = 'idle'
-  attendanceResult.value = null
-  errorMessage.value = ''
-  statusText.value = 'Position your face inside the frame'
 }
 </script>
 
 <style scoped>
-
-/* PAGE */
-.page {
+.mark-page {
   min-height: 100vh;
-  background: #05070a;
+  background: radial-gradient(circle at top, #0b0f14, #05070a);
   color: white;
-  display: flex;
-  flex-direction: column;
 }
 
-/* HEADER */
-.header {
+.page-header {
   display: flex;
   justify-content: space-between;
-  padding: 16px 22px;
+  align-items: center;
+  padding: 18px 22px;
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.logo-mark { display: flex; align-items: center; gap: 10px; }
 
-.dot {
-  width: 10px;
-  height: 10px;
+.logo-dot {
+  width: 10px; height: 10px;
   background: #00F0FF;
   border-radius: 50%;
   box-shadow: 0 0 12px #00F0FF;
 }
 
-.brand h1 {
-  font-size: 14px;
-  margin: 0;
-}
+.logo-text { font-weight: 700; }
 
-.brand p {
-  font-size: 11px;
+.back-btn {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
   color: #9ca3af;
-  margin: 0;
+  cursor: pointer;
 }
 
-.time {
-  font-size: 11px;
-  color: #6b7280;
-}
-
-/* MAIN */
-.main {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 24px;
-}
-
-.container {
-  width: 100%;
+.page-main {
+  padding: 20px 16px;
   max-width: 520px;
+  margin: 0 auto;
+}
+
+/* SESSION BANNER */
+.session-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0,102,255,0.06);
+  border: 1px solid rgba(0,102,255,0.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.session-module {
+  font-size: 11px;
+  font-weight: 700;
+  color: #00F0FF;
+  background: rgba(0,240,255,0.08);
+  border: 1px solid rgba(0,240,255,0.2);
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.session-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+
+.session-lecturer { font-size: 12px; color: #9ca3af; }
+
+.pulse-wrap { display: flex; align-items: center; gap: 6px; }
+
+.pulse-dot {
+  width: 8px; height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.8); }
+}
+
+.live-text { font-size: 11px; font-weight: 700; color: #10b981; }
+
+/* SUCCESS */
+.success-state {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  text-align: center;
+  padding: 40px 20px;
 }
+
+.success-icon {
+  width: 64px; height: 64px;
+  background: rgba(16,185,129,0.1);
+  border: 2px solid rgba(16,185,129,0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #10b981;
+  margin-bottom: 20px;
+}
+
+.success-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+
+.success-sub { font-size: 14px; color: #9ca3af; margin-bottom: 28px; }
+
+.done-btn {
+  padding: 12px 28px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(0,240,255,0.25);
+  color: #00F0FF;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.done-btn:hover { border-color: rgba(0,240,255,0.6); }
 
 /* CAMERA */
-.camera {
+.camera-section { width: 100%; }
+
+.camera-frame {
   position: relative;
+  height: 380px;
   border-radius: 16px;
   overflow: hidden;
-  border: 1px solid rgba(0,240,255,0.08);
-  background: #0b0f14;
+  border: 1px solid rgba(0,240,255,0.15);
+  background: black;
+  margin-bottom: 14px;
 }
 
-video,
-img {
-  width: 100%;
-  height: 420px;
-  object-fit: cover;
-}
+.video { width: 100%; height: 100%; object-fit: cover; }
 
-/* OVERLAY */
-.overlay {
+/* SCANNER */
+.scanner-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
 }
 
-.frame {
+.scanner-box {
+  width: 200px; height: 260px;
+  border: 2px solid rgba(0,240,255,0.6);
+  border-radius: 16px;
   position: relative;
-  width: 240px;
-  height: 280px;
-  border: 1px solid rgba(0,240,255,0.4);
-  border-radius: 14px;
+  overflow: hidden;
 }
 
-/* SCAN LINE */
-.scan-line {
+.scanner-line {
   position: absolute;
   width: 100%;
   height: 2px;
   background: #00F0FF;
-  box-shadow: 0 0 10px #00F0FF;
-  animation: scan 1.6s linear infinite;
+  animation: scan 2s linear infinite;
+  opacity: 0.8;
 }
 
 @keyframes scan {
-  0% { top: 0; }
-  100% { top: 100%; }
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(260px); }
 }
 
-/* CORNERS */
-.corner {
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  border: 2px solid #00F0FF;
-}
-
-.tl { top: 0; left: 0; border-right: none; border-bottom: none; }
-.tr { top: 0; right: 0; border-left: none; border-bottom: none; }
-.bl { bottom: 0; left: 0; border-right: none; border-top: none; }
-.br { bottom: 0; right: 0; border-left: none; border-top: none; }
-
-/* STATUS */
-.status {
-  margin-top: 12px;
+.scanner-text {
   font-size: 12px;
-  color: #00F0FF;
+  color: #9ca3af;
+  margin-top: 12px;
 }
 
-/* BUTTONS */
-.actions {
-  display: flex;
-  gap: 12px;
-}
-
-/* PRIMARY BUTTON (LOGIN STYLE) */
-.btn-primary {
-  flex: 1;
-  padding: 12px;
-  border-radius: 10px;
-
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(0,240,255,0.25);
-
-  color: #00F0FF;
-  font-weight: 600;
-
-  cursor: pointer;
-  transition: 0.2s;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn-primary::before {
-  content: "";
+/* PROCESSING */
+.processing-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent, rgba(0,240,255,0.08), transparent);
-  transform: translateX(-100%);
-  animation: sweep 3.5s linear infinite;
-}
-
-@keyframes sweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-.btn-primary:hover {
-  border-color: rgba(0,240,255,0.6);
-  color: white;
-}
-
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* SECONDARY */
-.btn-secondary {
-  padding: 12px 16px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.08);
-  color: #9ca3af;
-  cursor: pointer;
-}
-
-.btn-secondary:hover {
-  border-color: rgba(0,240,255,0.25);
-  color: #00F0FF;
-}
-
-/* LOADING */
-.loading {
+  background: rgba(5, 7, 10, 0.85);
   display: flex;
-  gap: 8px;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 13px;
+  color: #9ca3af;
 }
 
 .spinner {
-  width: 14px;
-  height: 14px;
+  width: 32px; height: 32px;
   border: 2px solid rgba(0,240,255,0.2);
   border-top-color: #00F0FF;
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ERROR */
+.banner-error {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #f87171;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 14px;
 }
 
-/* RESULT */
-.result {
-  text-align: center;
-  padding: 10px;
+/* BUTTONS */
+.btn-row {
+  display: flex;
+  gap: 10px;
 }
 
-.result.success h2 { color: #00F0FF; }
-.result.error h2 { color: #ef4444; }
+.capture-btn {
+  flex: 1;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid rgba(0,240,255,0.25);
+  color: #00F0FF;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
 
+.capture-btn:hover { border-color: rgba(0,240,255,0.6); }
+
+.capture-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.retake-btn {
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #9ca3af;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.submit-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0,102,255,0.15);
+  border: 1px solid rgba(0,102,255,0.4);
+  color: #0066FF;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.submit-btn:hover { background: rgba(0,102,255,0.25); }
+
+.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

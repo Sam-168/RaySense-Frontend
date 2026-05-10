@@ -7,9 +7,12 @@
         <div class="logo-dot"></div>
         <span class="logo-text">RaySense</span>
       </div>
+
       <div class="header-right">
         <span class="welcome-text">{{ auth.fullName }}</span>
-        <button class="logout-btn" @click="handleLogout">Logout</button>
+        <button class="logout-btn" @click="handleLogout">
+          Logout
+        </button>
       </div>
     </header>
 
@@ -22,7 +25,9 @@
       </div>
 
       <!-- ERROR -->
-      <div v-else-if="error" class="banner-error">{{ error }}</div>
+      <div v-else-if="error" class="banner-error">
+        {{ error }}
+      </div>
 
       <!-- SECTION DETAIL VIEW -->
       <div v-else-if="activeSection">
@@ -37,60 +42,130 @@
 
         <div class="page-title-row">
           <h1 class="title">My Modules</h1>
-          <p class="subtitle">{{ sections.length }} section(s) assigned</p>
+          <p class="subtitle">
+            {{ sections.length }} section(s) assigned
+          </p>
         </div>
 
         <!-- EMPTY STATE -->
         <div v-if="sections.length === 0" class="empty-state">
           <p>No sections assigned yet.</p>
-          <p class="empty-sub">Contact your administrator to be assigned to a module.</p>
+          <p class="empty-sub">
+            Contact your administrator to be assigned to a module.
+          </p>
         </div>
 
         <!-- SECTION CARDS -->
         <div v-else class="sections-grid">
+
           <div
             v-for="section in sections"
             :key="section.sectionId"
             class="section-card"
-            @click="openSection(section)"
           >
-            <!-- Module Code Badge -->
+
+            <!-- CARD TOP -->
             <div class="card-top">
-              <span class="module-badge">{{ section.fullSectionName }}</span>
-              <span class="department">{{ section.department }}</span>
+              <span class="module-badge">
+                {{ section.fullSectionName }}
+              </span>
+
+              <span class="department">
+                {{ section.department }}
+              </span>
             </div>
 
-            <!-- Module Name -->
-            <h2 class="module-name">{{ section.moduleName }}</h2>
-            <p class="semester-text">{{ section.semester }} · {{ section.year }}</p>
+            <!-- MODULE INFO -->
+            <h2 class="module-name">
+              {{ section.moduleName }}
+            </h2>
 
-            <!-- Stats Row -->
+            <p class="semester-text">
+              {{ section.semester }} · {{ section.year }}
+            </p>
+
+            <!-- STATS -->
             <div class="stats-row">
-              <div class="stat">
-                <span class="stat-value">{{ section.studentCount }}</span>
-                <span class="stat-label">Students</span>
-              </div>
-              <div class="divider"></div>
-              <div class="stat">
-                <span class="stat-value cyan">{{ section.todayPresent }}</span>
-                <span class="stat-label">Present Today</span>
-              </div>
-              <div class="divider"></div>
+
               <div class="stat">
                 <span class="stat-value">
-                  {{ section.studentCount > 0
-                    ? Math.round(section.todayPresent * 100 / section.studentCount)
-                    : 0 }}%
+                  {{ section.studentCount }}
                 </span>
-                <span class="stat-label">Today's Rate</span>
+                <span class="stat-label">
+                  Students
+                </span>
               </div>
+
+              <div class="divider"></div>
+
+              <div class="stat">
+                <span class="stat-value cyan">
+                  {{ section.todayPresent }}
+                </span>
+                <span class="stat-label">
+                  Present Today
+                </span>
+              </div>
+
+              <div class="divider"></div>
+
+              <div class="stat">
+                <span class="stat-value">
+                  {{
+                    section.studentCount > 0
+                      ? Math.round(
+                          (section.todayPresent * 100) /
+                          section.studentCount
+                        )
+                      : 0
+                  }}%
+                </span>
+
+                <span class="stat-label">
+                  Rate
+                </span>
+              </div>
+
             </div>
 
-            <div class="card-footer">
-              View Attendance →
+            <!-- ACTIONS -->
+            <div class="card-actions">
+
+              <!-- ACTIVE SESSION -->
+              <button
+                v-if="section.hasActiveSession"
+                class="resume-btn"
+                @click="router.push(`/lecturer/sessions/${section.activeSessionId}/live`)"
+              >
+                ▶ Resume Active Session
+              </button>
+
+              <!-- START SESSION -->
+              <button
+                v-else
+                class="start-btn"
+                :disabled="startingSession === section.sectionId"
+                @click="startSession(section)"
+              >
+                {{
+                  startingSession === section.sectionId
+                    ? 'Starting...'
+                    : '▶ Start Attendance'
+                }}
+              </button>
+
+              <!-- HISTORY -->
+              <button
+                class="history-btn"
+                @click="openSection(section)"
+              >
+                History
+              </button>
+
             </div>
 
           </div>
+
         </div>
 
       </div>
@@ -107,13 +182,13 @@ import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 import SectionDetailView from './SectionDetailView.vue'
 
-const router   = useRouter()
-const auth     = useAuthStore()
-
+const router        = useRouter()
+const auth          = useAuthStore()
 const loading       = ref(true)
 const error         = ref('')
 const sections      = ref([])
 const activeSection = ref(null)
+const startingSession = ref(null)   // tracks which section is loading
 
 onMounted(async () => {
   try {
@@ -125,6 +200,43 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+const startSession = async (section) => {
+  startingSession.value = section.sectionId
+  try {
+    const response = await api.post(
+      `/lecturer/sections/${section.sectionId}/sessions/start`,
+      { autoCloseMinutes: 60 }
+    )
+    router.push(`/lecturer/sessions/${response.data.sessionId}/live`)
+
+  } catch (err) {
+    const message = err.response?.data?.message || ''
+
+    // Session already exists → fetch it and redirect
+    if (message.includes('already has an active session')) {
+      try {
+        // Get the active session for this section
+        const sectionsResponse = await api.get('/lecturer/sections')
+        const sectionData = sectionsResponse.data.find(
+          s => s.sectionId === section.sectionId
+        )
+
+        if (sectionData?.activeSessionId) {
+          router.push(`/lecturer/sessions/${sectionData.activeSessionId}/live`)
+        } else {
+          alert('A session is already active. Check your dashboard.')
+        }
+      } catch {
+        alert(message)
+      }
+    } else {
+      alert(message)
+    }
+  } finally {
+    startingSession.value = null
+  }
+}
 
 const openSection = (section) => {
   activeSection.value = section
@@ -298,5 +410,60 @@ const handleLogout = () => {
 
 @media (max-width: 600px) {
   .sections-grid { grid-template-columns: 1fr; }
+}
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.start-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(0,102,255,0.1);
+  border: 1px solid rgba(0,102,255,0.3);
+  color: #0066FF;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.start-btn:hover {
+  background: rgba(0,102,255,0.2);
+  border-color: rgba(0,102,255,0.6);
+}
+
+.start-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.history-btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #9ca3af;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.history-btn:hover { border-color: rgba(255,255,255,0.2); color: white; }
+.resume-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.3);
+  color: #10b981;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.resume-btn:hover {
+  background: rgba(16,185,129,0.2);
+  border-color: rgba(16,185,129,0.6);
 }
 </style>
