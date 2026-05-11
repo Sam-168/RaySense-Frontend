@@ -4,10 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ═══════════════════════════════════════════════════
-   RAYSENSE — DESIGN TOKENS
-   Single source of truth. Never hardcode hex values.
-═══════════════════════════════════════════════════ */
+/* 
+   RAYSENSE
+*/
 :root {
   /* Brand */
   --brand:        #0066FF;
@@ -41,7 +40,7 @@
 
   /* Surfaces */
   --surface-0: #05070A;          /* page background */
-  --surface-1: rgba(255,255,255,0.025); /* card */
+  --surface-1: rgba(255,255,255,0.025); 
   --surface-2: rgba(255,255,255,0.04);  /* input, raised */
 
   /* Borders */
@@ -60,9 +59,9 @@
   --font: 'Geist', system-ui, -apple-system, sans-serif;
 }
 
-/* ═══════════════════════════════════════════════════
+/* 
    RESET & BASE
-═══════════════════════════════════════════════════ */
+ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -73,10 +72,10 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ═══════════════════════════════════════════════════
+/*
    SHARED LAYOUT
-   Used by every page that has a header + main content
-═══════════════════════════════════════════════════ */
+
+ */
 .rs-page {
   min-height: 100vh;
   background: radial-gradient(ellipse at top, #0B1020 0%, var(--surface-0) 70%);
@@ -119,10 +118,10 @@ html, body {
   max-width: 1000px;
 }
 
-/* ═══════════════════════════════════════════════════
+/* 
    BUTTONS
-   One system. Every button in the app uses these.
-═══════════════════════════════════════════════════ */
+ 
+ */
 
 /* Base */
 .btn {
@@ -204,7 +203,7 @@ html, body {
   color: var(--text-primary);
 }
 
-/* Danger — destructive */
+
 .btn-danger {
   background: var(--danger-dim);
   border-color: var(--danger-border);
@@ -232,9 +231,9 @@ html, body {
 .btn--sm { font-size: 11px; padding: 5px 12px; }
 .btn--lg { font-size: 15px; padding: 13px 24px; width: 100%; }
 
-/* ═══════════════════════════════════════════════════
+/* 
    INPUTS
-═══════════════════════════════════════════════════ */
+*/
 .rs-input {
   width: 100%;
   padding: 10px 13px;
@@ -263,9 +262,9 @@ html, body {
 /* Select inherits input styles */
 .rs-input option { background: #1A2030; }
 
-/* ═══════════════════════════════════════════════════
+/* 
    FORM FIELD
-═══════════════════════════════════════════════════ */
+*/
 .rs-field { display: flex; flex-direction: column; gap: 5px; }
 
 .rs-label {
@@ -280,14 +279,9 @@ html, body {
   color: #F87171;
 }
 
-/* ═══════════════════════════════════════════════════
-   CARDS
-═══════════════════════════════════════════════════ */
-
-
-/* ═══════════════════════════════════════════════════
+/*
    BADGES / STATUS PILLS
-═══════════════════════════════════════════════════ */
+*/
 .rs-badge {
   display: inline-flex;
   align-items: center;
@@ -304,9 +298,9 @@ html, body {
 .rs-badge--danger  { background: var(--danger-dim);   border-color: var(--danger-border);   color: #F87171; }
 .rs-badge--muted   { background: rgba(107,114,128,0.10); border-color: rgba(107,114,128,0.2); color: #6B7280; }
 
-/* ═══════════════════════════════════════════════════
+/*
    ALERTS / BANNERS
-═══════════════════════════════════════════════════ */
+ */
 .rs-alert {
   padding: 10px 14px;
   border-radius: var(--radius-md);
@@ -318,9 +312,9 @@ html, body {
 .rs-alert--warning { background: var(--warning-dim); border-color: var(--warning-border); color: #FBB944; }
 .rs-alert--success { background: var(--success-dim); border-color: var(--success-border); color: var(--success); }
 
-/* ═══════════════════════════════════════════════════
+/*
    SPINNER
-═══════════════════════════════════════════════════ */
+ */
 .rs-spinner {
   width: 24px;
   height: 24px;
@@ -336,9 +330,9 @@ html, body {
 
 @keyframes rs-spin { to { transform: rotate(360deg); } }
 
-/* ═══════════════════════════════════════════════════
+/*
    TABLE
-═══════════════════════════════════════════════════ */
+ */
 .rs-table-wrap { overflow-x: auto; }
 
 .rs-table {
@@ -366,9 +360,9 @@ html, body {
 
 .rs-table tr:last-child td { border-bottom: none; }
 
-/* ═══════════════════════════════════════════════════
+/*
    STATUS DOT
-═══════════════════════════════════════════════════ */
+ */
 .rs-dot {
   width: 7px;
   height: 7px;
@@ -385,9 +379,9 @@ html, body {
   50%       { opacity: 0.5; transform: scale(0.75); }
 }
 
-/* ═══════════════════════════════════════════════════
+/*
    TABS
-═══════════════════════════════════════════════════ */
+ */
 .rs-tabs {
   display: flex;
   gap: 6px;
@@ -416,9 +410,9 @@ html, body {
   color: var(--accent);
 }
 
-/* ═══════════════════════════════════════════════════
+/*
    LOGOUT BUTTON (header utility)
-═══════════════════════════════════════════════════ */
+ */
 .rs-logout {
   font-family: var(--font);
   font-size: 12px;
@@ -437,9 +431,9 @@ html, body {
   color: #F87171;
 }
 
-/* ═══════════════════════════════════════════════════
+/*
    PROGRESS BAR
-═══════════════════════════════════════════════════ */
+*/
 .rs-progress {
   height: 3px;
   background: var(--border-subtle);
@@ -454,9 +448,9 @@ html, body {
   transition: width 0.5s ease;
 }
 
-/* ═══════════════════════════════════════════════════
+/*
    LOADING STATE (centered spinner + text)
-═══════════════════════════════════════════════════ */
+ */
 .rs-loading {
   display: flex;
   flex-direction: column;
@@ -467,9 +461,9 @@ html, body {
   font-size: 13px;
 }
 
-/* ═══════════════════════════════════════════════════
+/* 
    SEARCH INPUT
-═══════════════════════════════════════════════════ */
+*/
 .rs-search {
   width: 100%;
   padding: 10px 14px;

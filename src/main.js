@@ -7,7 +7,7 @@ import './assets/main.css'
 
 const app = createApp(App)
 
-app.use(createPinia())  // Must be before router
+app.use(createPinia())  
 app.use(router)
 
 app.mount('#app')
