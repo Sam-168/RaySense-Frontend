@@ -1,61 +1,60 @@
 <template>
   <div>
     <div class="tab-header">
-      <h2 class="tab-title">Sections</h2>
-      <button class="add-btn" @click="showForm = !showForm">
-        {{ showForm ? 'Cancel' : '+ Add Section' }}
+      <h2 class="section-title">Sections</h2>
+      <button class="btn btn-primary btn--sm" @click="showForm = !showForm">
+        {{ showForm ? 'Cancel' : '+ Add section' }}
       </button>
     </div>
 
     <!-- CREATE FORM -->
-    <div v-if="showForm" class="form-card">
-      <h3 class="form-title">New Section</h3>
+    <div v-if="showForm" class="rs-card form-card">
+      <h3 class="form-title">New section</h3>
       <div class="form-grid">
-        <div class="field">
-          <label>Module</label>
-          <select v-model="form.moduleId" class="input">
+        <div class="rs-field">
+          <label class="rs-label">Module</label>
+          <select v-model="form.moduleId" class="rs-input">
             <option value="">Select module...</option>
             <option v-for="m in modules" :key="m.id" :value="m.id">
-              {{ m.moduleCode }} - {{ m.moduleName }}
+              {{ m.moduleCode }} — {{ m.moduleName }}
             </option>
           </select>
         </div>
-        <div class="field">
-          <label>Lecturer</label>
-          <select v-model="form.lecturerId" class="input">
+        <div class="rs-field">
+          <label class="rs-label">Lecturer</label>
+          <select v-model="form.lecturerId" class="rs-input">
             <option value="">Select lecturer...</option>
             <option v-for="l in lecturers" :key="l.id" :value="l.id">
               {{ l.fullName }} ({{ l.employeeNumber }})
             </option>
           </select>
         </div>
-        <div class="field">
-          <label>Section Code</label>
-          <input v-model="form.sectionCode" class="input" placeholder="e.g. A" />
+        <div class="rs-field">
+          <label class="rs-label">Section Code</label>
+          <input v-model="form.sectionCode" class="rs-input" placeholder="A" />
         </div>
-        <div class="field">
-          <label>Semester</label>
-          <input v-model="form.semester" class="input" placeholder="e.g. Semester 1" />
+        <div class="rs-field">
+          <label class="rs-label">Semester</label>
+          <input v-model="form.semester" class="rs-input" placeholder="Semester 1" />
         </div>
-        <div class="field">
-          <label>Year</label>
-          <input v-model="form.year" type="number" class="input" placeholder="e.g. 2026" />
+        <div class="rs-field">
+          <label class="rs-label">Year</label>
+          <input v-model="form.year" type="number" class="rs-input" placeholder="2026" />
         </div>
       </div>
-      <div v-if="formError" class="banner-error">{{ formError }}</div>
-      <button class="submit-btn" :disabled="saving" @click="createSection">
-        {{ saving ? 'Creating...' : 'Create Section' }}
+      <div v-if="formError" class="rs-alert rs-alert--error mb-3">{{ formError }}</div>
+      <button class="btn btn-accent" :disabled="saving" @click="createSection">
+        {{ saving ? 'Creating...' : 'Create section' }}
       </button>
     </div>
 
-    <!-- TABLE -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+    <div v-if="loading" class="rs-loading">
+      <div class="rs-spinner"></div>
     </div>
 
     <div v-else>
-      <div class="table-wrap">
-        <table class="table">
+      <div class="rs-table-wrap">
+        <table class="rs-table">
           <thead>
             <tr>
               <th>Section</th>
@@ -63,22 +62,22 @@
               <th>Lecturer</th>
               <th>Semester</th>
               <th>Students</th>
-              <th>Actions</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="section in sections" :key="section.id">
-              <td><span class="code-badge">{{ section.fullSectionName }}</span></td>
+              <td><span class="rs-badge rs-badge--accent">{{ section.fullSectionName }}</span></td>
               <td>{{ section.moduleName }}</td>
               <td>{{ section.lecturerName }}</td>
               <td>{{ section.semester }} {{ section.year }}</td>
               <td>
-                <button class="link-btn" @click="openEnrollment(section)">
+                <button class="inline-link" @click="openEnrollment(section)">
                   {{ section.studentCount }} students
                 </button>
               </td>
               <td>
-                <button class="danger-btn" @click="deleteSection(section.id)">
+                <button class="btn btn-danger btn--sm" @click="deleteSection(section.id)">
                   Deactivate
                 </button>
               </td>
@@ -88,75 +87,50 @@
       </div>
 
       <!-- ENROLLMENT PANEL -->
-      <div v-if="activeSection" class="enrollment-panel">
+      <div v-if="activeSection" class="rs-card enrollment-panel">
         <div class="enrollment-header">
-          <h3 class="enrollment-title">
-            Manage Students: {{ activeSection.fullSectionName }}
-          </h3>
-          <button class="close-btn" @click="activeSection = null">✕</button>
+          <h3 class="enrollment-title">{{ activeSection.fullSectionName }} — Students</h3>
+          <button class="btn btn-ghost btn--sm" @click="activeSection = null">Close</button>
         </div>
 
-        <div v-if="enrollmentLoading" class="loading-state">
-          <div class="spinner"></div>
+        <div v-if="enrollmentLoading" class="rs-loading" style="padding: 24px 0;">
+          <div class="rs-spinner"></div>
         </div>
 
-        <div v-else class="enrollment-content">
-
-          <!-- ENROLLED STUDENTS -->
+        <div v-else class="enrollment-cols">
+          <!-- Enrolled -->
           <div class="enrollment-col">
-            <h4 class="col-title">Enrolled ({{ enrollmentData.enrolled.length }})</h4>
+            <p class="col-label">Enrolled ({{ enrollmentData.enrolled.length }})</p>
             <div class="student-list">
-              <div
-                v-for="student in enrollmentData.enrolled"
-                :key="student.id"
-                class="student-row"
-              >
+              <div v-for="s in enrollmentData.enrolled" :key="s.id" class="student-row">
                 <div>
-                  <p class="student-name">{{ student.fullName }}</p>
-                  <p class="student-num">{{ student.studentNumber }}</p>
+                  <p class="student-name">{{ s.fullName }}</p>
+                  <p class="student-num">{{ s.studentNumber }}</p>
                 </div>
-                <button class="remove-btn" @click="removeStudent(student.id)">
-                  Remove
-                </button>
+                <button class="btn btn-danger btn--sm" @click="removeStudent(s.id)">Remove</button>
               </div>
-              <p v-if="enrollmentData.enrolled.length === 0" class="empty-text">
-                No students enrolled yet
-              </p>
+              <p v-if="!enrollmentData.enrolled.length" class="empty-text">No students enrolled</p>
             </div>
           </div>
 
-          <!-- AVAILABLE STUDENTS -->
+          <!-- Available -->
           <div class="enrollment-col">
-            <h4 class="col-title">Available ({{ enrollmentData.available.length }})</h4>
-            <input
-              v-model="studentSearch"
-              class="search-input"
-              placeholder="Search students..."
-            />
+            <p class="col-label">Available ({{ enrollmentData.available.length }})</p>
+            <input v-model="studentSearch" class="rs-search" placeholder="Search..." style="margin-bottom: 10px;" />
             <div class="student-list">
-              <div
-                v-for="student in filteredAvailable"
-                :key="student.id"
-                class="student-row"
-              >
+              <div v-for="s in filteredAvailable" :key="s.id" class="student-row">
                 <div>
-                  <p class="student-name">{{ student.fullName }}</p>
-                  <p class="student-num">{{ student.studentNumber }}</p>
+                  <p class="student-name">{{ s.fullName }}</p>
+                  <p class="student-num">{{ s.studentNumber }}</p>
                 </div>
-                <button class="enroll-btn" @click="enrollStudent(student.id)">
-                  + Enroll
-                </button>
+                <button class="btn btn-success btn--sm" @click="enrollStudent(s.id)">Enrol</button>
               </div>
-              <p v-if="filteredAvailable.length === 0" class="empty-text">
-                No available students
-              </p>
+              <p v-if="!filteredAvailable.length" class="empty-text">No available students</p>
             </div>
           </div>
-
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -164,27 +138,24 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '@/services/api'
 
-const loading         = ref(true)
-const saving          = ref(false)
-const showForm        = ref(false)
-const formError       = ref('')
-const sections        = ref([])
-const modules         = ref([])
-const lecturers       = ref([])
-const activeSection   = ref(null)
-const enrollmentData  = ref({ enrolled: [], available: [] })
+const loading          = ref(true)
+const saving           = ref(false)
+const showForm         = ref(false)
+const formError        = ref('')
+const sections         = ref([])
+const modules          = ref([])
+const lecturers        = ref([])
+const activeSection    = ref(null)
+const enrollmentData   = ref({ enrolled: [], available: [] })
 const enrollmentLoading = ref(false)
-const studentSearch   = ref('')
+const studentSearch    = ref('')
 
-const form = ref({
-  moduleId: '', lecturerId: '', sectionCode: '', semester: '', year: new Date().getFullYear()
-})
+const form = ref({ moduleId: '', lecturerId: '', sectionCode: '', semester: '', year: new Date().getFullYear() })
 
 const filteredAvailable = computed(() => {
   const q = studentSearch.value.toLowerCase()
   return enrollmentData.value.available.filter(s =>
-    s.fullName.toLowerCase().includes(q) ||
-    s.studentNumber.toLowerCase().includes(q)
+    s.fullName.toLowerCase().includes(q) || s.studentNumber.toLowerCase().includes(q)
   )
 })
 
@@ -194,7 +165,7 @@ const fetchAll = async () => {
     const [sectionsRes, modulesRes, lecturersRes] = await Promise.all([
       api.get('/admin/sections'),
       api.get('/admin/modules'),
-      api.get('/admin/lecturers')
+      api.get('/admin/lecturers'),
     ])
     sections.value  = sectionsRes.data
     modules.value   = modulesRes.data
@@ -226,20 +197,16 @@ const createSection = async () => {
 
 const deleteSection = async (id) => {
   if (!confirm('Deactivate this section?')) return
-  try {
-    await api.delete(`/admin/sections/${id}`)
-    await fetchAll()
-  } catch (err) {
-    alert(err.response?.data?.message || 'Failed to deactivate')
-  }
+  try { await api.delete(`/admin/sections/${id}`); await fetchAll() }
+  catch (err) { alert(err.response?.data?.message || 'Failed') }
 }
 
 const openEnrollment = async (section) => {
   activeSection.value = section
   enrollmentLoading.value = true
   try {
-    const response = await api.get(`/admin/sections/${section.id}/students`)
-    enrollmentData.value = response.data
+    const res = await api.get(`/admin/sections/${section.id}/students`)
+    enrollmentData.value = res.data
   } finally {
     enrollmentLoading.value = false
   }
@@ -250,20 +217,16 @@ const enrollStudent = async (studentId) => {
     await api.post(`/admin/sections/${activeSection.value.id}/enroll`, { studentId })
     await openEnrollment(activeSection.value)
     await fetchAll()
-  } catch (err) {
-    alert(err.response?.data?.message || 'Failed to enroll')
-  }
+  } catch (err) { alert(err.response?.data?.message || 'Failed') }
 }
 
 const removeStudent = async (studentId) => {
-  if (!confirm('Remove student from this section?')) return
+  if (!confirm('Remove this student?')) return
   try {
     await api.delete(`/admin/sections/${activeSection.value.id}/students/${studentId}`)
     await openEnrollment(activeSection.value)
     await fetchAll()
-  } catch (err) {
-    alert(err.response?.data?.message || 'Failed to remove')
-  }
+  } catch (err) { alert(err.response?.data?.message || 'Failed') }
 }
 </script>
 
@@ -275,158 +238,32 @@ const removeStudent = async (studentId) => {
   margin-bottom: 20px;
 }
 
-.tab-title { font-size: 18px; font-weight: 700; }
+.section-title { font-size: 16px; font-weight: 600; }
 
-.add-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  background: rgba(0,102,255,0.1);
-  border: 1px solid rgba(0,102,255,0.3);
-  color: #0066FF;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-
-.add-btn:hover { background: rgba(0,102,255,0.2); }
-
-/* FORM */
-.form-card {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.form-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+.form-card { margin-bottom: 20px; }
+.form-title { font-size: 14px; font-weight: 600; margin-bottom: 14px; }
 
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 14px;
 }
 
-.field label {
-  font-size: 12px;
-  color: #9ca3af;
-  display: block;
-  margin-bottom: 4px;
-}
+.mb-3 { margin-bottom: 12px; }
 
-.input {
-  width: 100%;
-  padding: 9px 12px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  color: white;
-  font-size: 13px;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.input:focus { border-color: rgba(0,240,255,0.3); }
-
-.input option { background: #1f2937; }
-
-.banner-error {
-  background: rgba(239,68,68,0.1);
-  border: 1px solid rgba(239,68,68,0.3);
-  color: #f87171;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  margin-bottom: 12px;
-}
-
-.submit-btn {
-  padding: 10px 20px;
-  border-radius: 8px;
-  background: rgba(0,102,255,0.15);
-  border: 1px solid rgba(0,102,255,0.4);
-  color: #0066FF;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-/* LOADING */
-.loading-state { display: flex; justify-content: center; padding: 40px; }
-
-.spinner {
-  width: 24px; height: 24px;
-  border: 2px solid rgba(0,240,255,0.2);
-  border-top-color: #00F0FF;
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* TABLE */
-.table-wrap { overflow-x: auto; margin-bottom: 24px; }
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.table th {
-  text-align: left;
-  padding: 10px 14px;
-  font-size: 11px;
-  color: #6b7280;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.table td {
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  color: #d1d5db;
-}
-
-.code-badge {
-  font-size: 12px;
-  font-weight: 700;
-  color: #00F0FF;
-  background: rgba(0,240,255,0.08);
-  border: 1px solid rgba(0,240,255,0.2);
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.link-btn {
+.inline-link {
   background: none;
   border: none;
-  color: #0066FF;
+  color: var(--brand);
   cursor: pointer;
   font-size: 13px;
+  font-family: var(--font);
   text-decoration: underline;
+  padding: 0;
 }
 
-.danger-btn {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: rgba(239,68,68,0.08);
-  border: 1px solid rgba(239,68,68,0.2);
-  color: #f87171;
-  cursor: pointer;
-}
-
-/* ENROLLMENT PANEL */
-.enrollment-panel {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 14px;
-  padding: 20px;
-  margin-top: 8px;
-}
+.enrollment-panel { margin-top: 16px; }
 
 .enrollment-header {
   display: flex;
@@ -435,42 +272,30 @@ const removeStudent = async (studentId) => {
   margin-bottom: 16px;
 }
 
-.enrollment-title { font-size: 15px; font-weight: 600; }
+.enrollment-title { font-size: 14px; font-weight: 600; }
 
-.close-btn {
-  background: none;
-  border: none;
-  color: #6b7280;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.enrollment-content {
+.enrollment-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
 
-.col-title { font-size: 13px; font-weight: 600; color: #9ca3af; margin-bottom: 12px; }
+@media (max-width: 600px) { .enrollment-cols { grid-template-columns: 1fr; } }
 
-.search-input {
-  width: 100%;
-  padding: 8px 12px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px;
-  color: white;
-  font-size: 12px;
-  outline: none;
+.col-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
   margin-bottom: 10px;
-  box-sizing: border-box;
 }
 
 .student-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 300px;
+  max-height: 320px;
   overflow-y: auto;
 }
 
@@ -478,40 +303,19 @@ const removeStudent = async (studentId) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   padding: 8px 12px;
 }
 
 .student-name { font-size: 13px; font-weight: 500; }
+.student-num  { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
-.student-num { font-size: 11px; color: #6b7280; }
-
-.enroll-btn {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: rgba(16,185,129,0.08);
-  border: 1px solid rgba(16,185,129,0.2);
-  color: #10b981;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.remove-btn {
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: rgba(239,68,68,0.08);
-  border: 1px solid rgba(239,68,68,0.2);
-  color: #f87171;
-  cursor: pointer;
-}
-
-.empty-text { font-size: 12px; color: #4b5563; text-align: center; padding: 16px 0; }
-
-@media (max-width: 600px) {
-  .enrollment-content { grid-template-columns: 1fr; }
+.empty-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px 0;
 }
 </style>

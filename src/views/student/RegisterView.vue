@@ -1,191 +1,135 @@
 <template>
-  <div class="register-page">
+  <div class="rs-page">
 
-    <!-- Header -->
-    <header class="page-header">
-      <div class="logo-mark">
-        <div class="logo-dot"></div>
-        <span class="logo-text">RaySense</span>
+    <header class="rs-header">
+      <div class="rs-logo">
+        <div class="rs-logo-dot"></div>
+        RaySense
       </div>
-      <div class="header-chip">Student Registration</div>
+      <span class="header-chip">Student Registration</span>
     </header>
 
-    <main class="page-main">
+    <main class="register-main">
+      <div class="rs-card rs-card--accent register-card">
 
-      <!-- Card -->
-      <div class="register-card">
-      
-        <!-- Title -->
         <div class="card-header">
-          <h1 class="title">Register Student</h1>
-          <p class="subtitle">Enroll a new student with biometric face data</p>
+          <h1 class="card-title">Create account</h1>
+          <p class="card-sub">Enroll with biometric face verification</p>
         </div>
-        <div v-if="apiError" class="banner-error">
+
+        <div v-if="apiError" class="rs-alert rs-alert--error mb-4">
           {{ apiError }}
         </div>
-        <!-- FORM -->
+
         <form class="form" @submit.prevent="handleSubmit">
 
-          <!-- Full Name -->
-          <div class="field">
-            <label>Full Name</label>
-            <input v-model="form.fullName" class="input" />
-            <p v-if="errors.fullName" class="error">{{ errors.fullName }}</p>
+          <div class="form-grid">
+            <div class="rs-field">
+              <label class="rs-label">Full Name</label>
+              <input v-model="form.fullName" class="rs-input" :class="{ 'rs-input--error': errors.fullName }" placeholder="Samukelo Ndlela" />
+              <p v-if="errors.fullName" class="rs-field-error">{{ errors.fullName }}</p>
+            </div>
+
+            <div class="rs-field">
+              <label class="rs-label">Student Number</label>
+              <input v-model="form.studentNumber" class="rs-input" :class="{ 'rs-input--error': errors.studentNumber }" placeholder="231212126" />
+              <p v-if="errors.studentNumber" class="rs-field-error">{{ errors.studentNumber }}</p>
+            </div>
+
+            <div class="rs-field">
+              <label class="rs-label">Email</label>
+              <input v-model="form.email" type="email" class="rs-input" :class="{ 'rs-input--error': errors.email }" placeholder="you@university.ac.za" />
+              <p v-if="errors.email" class="rs-field-error">{{ errors.email }}</p>
+            </div>
+
+            <div class="rs-field">
+              <label class="rs-label">Password</label>
+              <input v-model="form.password" type="password" class="rs-input" :class="{ 'rs-input--error': errors.password }" placeholder="Min 6 characters" />
+              <p v-if="errors.password" class="rs-field-error">{{ errors.password }}</p>
+            </div>
+
+            <div class="rs-field">
+              <label class="rs-label">Class Group <span class="optional"></span></label>
+              <input v-model="form.classId" class="rs-input" placeholder="3H" />
+            </div>
           </div>
 
-          <!-- Student Number -->
-          <div class="field">
-            <label>Student Number</label>
-            <input v-model="form.studentNumber" class="input" />
-            <p v-if="errors.studentNumber" class="error">{{ errors.studentNumber }}</p>
-          </div>
-
-          <!-- Class ID -->
-          <div class="field">
-            <label>Class ID (optional)</label>
-            <input v-model="form.classId" class="input" />
-          </div>
-          <!-- Email -->
-          <div class="field">
-            <label>Email</label>
-            <input
-              v-model="form.email"
-              type="email"
-              class="input"
-              placeholder="you@example.com"
-            />
-            <p v-if="errors.email" class="error">{{ errors.email }}</p>
-          </div>
-
-          <!-- Password -->
-          <div class="field">
-            <label>Password</label>
-            <input
-              v-model="form.password"
-              type="password"
-              class="input"
-              placeholder="Min 6 characters"
-            />
-            <p v-if="errors.password" class="error">{{ errors.password }}</p>
-          </div>
-
-          <!-- CAMERA -->
-          <div class="camera-section">
-
-            <label class="camera-label">Biometric Scan</label>
+          <!-- BIOMETRIC CAPTURE -->
+          <div class="biometric-section">
+            <label class="rs-label">Biometric scan</label>
 
             <div class="camera-frame">
+              <video v-if="!photo" ref="video" autoplay playsinline class="camera-feed"></video>
+              <img v-else :src="photo" class="camera-feed" />
 
-              <!-- VIDEO -->
-              <video
-                v-if="!photo"
-                ref="video"
-                autoplay
-                class="video"
-              ></video>
-
-              <!-- PHOTO -->
-              <img
-                v-else
-                :src="photo"
-                class="video"
-              />
-
-              <!-- SCANNER OVERLAY -->
               <div v-if="!photo" class="scanner-overlay">
-
-                <div class="scanner-box">
-                  <div class="scanner-line"></div>
-                </div>
-
-                <p class="scanner-text">
-                  Align face inside frame
-                </p>
-
+                <div class="face-oval"></div>
+                <p class="scanner-hint">Align your face within the oval</p>
               </div>
 
+              <div v-if="photo" class="captured-overlay">
+                <span class="rs-badge rs-badge--success">Face captured</span>
+              </div>
             </div>
 
-            <p v-if="photo" class="success-text">Face captured successfully</p>
-
-            <!-- BUTTONS -->
-            <div class="btn-row">
-
-              <button
-                type="button"
-                class="btn-secondary"
-                @click="capturePhoto"
-                v-if="!photo"
-              >
-                Capture
+            <div class="camera-actions">
+              <button v-if="!photo" type="button" class="btn btn-ghost" @click="capturePhoto">
+                Capture photo
               </button>
-
-              <button
-                type="button"
-                class="btn-secondary"
-                @click="retake"
-                v-else
-              >
+              <button v-else type="button" class="btn btn-ghost" @click="retake">
                 Retake
               </button>
-
             </div>
-
           </div>
 
-          <!-- SUBMIT -->
-          <button class="btn-primary" :disabled="loading">
-            {{ loading ? "Registering..." : "Register Student" }}
+          <button class="btn btn-accent btn--lg" :disabled="loading" type="submit">
+            <span v-if="!loading">Create account</span>
+            <span v-else class="loading-row">
+              <span class="rs-spinner rs-spinner--sm"></span>
+              Registering...
+            </span>
           </button>
 
         </form>
 
-      </div>
+        <p class="login-text">
+          Already registered?
+          <router-link to="/login" class="link">Sign in</router-link>
+        </p>
 
+      </div>
     </main>
 
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
 
-const router = useRouter()
-const auth   = useAuthStore()
-
-const video   = ref(null)
-const stream  = ref(null)
-const photo   = ref(null)
-const loading = ref(false)
+const router   = useRouter()
+const auth     = useAuthStore()
+const video    = ref(null)
+const stream   = ref(null)
+const photo    = ref(null)
+const loading  = ref(false)
 const apiError = ref('')
 
-const form = reactive({
-  email:         '',
-  password:      '',
-  fullName:      '',
-  studentNumber: '',
-  classId:       ''
-})
+const form   = reactive({ email: '', password: '', fullName: '', studentNumber: '', classId: '' })
+const errors = reactive({ email: '', password: '', fullName: '', studentNumber: '' })
 
-const errors = reactive({
-  email:         '',
-  password:      '',
-  fullName:      '',
-  studentNumber: ''
-})
-
-// Start camera
 onMounted(async () => {
   try {
     stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
     video.value.srcObject = stream.value
-  } catch (err) {
-    apiError.value = 'Camera access denied. Please allow camera access.'
+  } catch {
+    apiError.value = 'Camera access denied. Please allow camera access and reload.'
   }
 })
+
+onBeforeUnmount(() => stream.value?.getTracks().forEach(t => t.stop()))
 
 const capturePhoto = () => {
   const canvas = document.createElement('canvas')
@@ -197,78 +141,35 @@ const capturePhoto = () => {
 
 const retake = () => { photo.value = null }
 
-// Validation
 const validate = () => {
-  errors.email         = ''
-  errors.password      = ''
-  errors.fullName      = ''
-  errors.studentNumber = ''
-  apiError.value       = ''
-
+  Object.keys(errors).forEach(k => errors[k] = '')
+  apiError.value = ''
   let valid = true
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-  if (!form.email || !emailRegex.test(form.email)) {
-    errors.email = 'Valid email is required'
-    valid = false
-  }
-  if (!form.password || form.password.length < 6) {
-    errors.password = 'Password must be at least 6 characters'
-    valid = false
-  }
-  if (form.fullName.length < 2) {
-    errors.fullName = 'Name too short'
-    valid = false
-  }
-  if (form.studentNumber.length < 3) {
-    errors.studentNumber = 'Invalid student number'
-    valid = false
-  }
-
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!form.email || !emailRe.test(form.email)) { errors.email = 'Valid email required'; valid = false }
+  if (!form.password || form.password.length < 6) { errors.password = 'Min 6 characters'; valid = false }
+  if (form.fullName.trim().length < 2) { errors.fullName = 'Name too short'; valid = false }
+  if (form.studentNumber.trim().length < 3) { errors.studentNumber = 'Invalid student number'; valid = false }
   return valid
 }
 
-// Submit
 const handleSubmit = async () => {
   if (!validate()) return
-  if (!photo.value) return (apiError.value = 'Please capture a photo first')
-
+  if (!photo.value) { apiError.value = 'Please capture a photo first'; return }
   loading.value = true
-
   try {
-    const payload = {
-      email:         form.email,
-      password:      form.password,
-      fullName:      form.fullName,
-      studentNumber: form.studentNumber,
-      classId:       form.classId,
-      photo:         photo.value.split(',')[1]  // strip base64 prefix
-    }
-
-    // Hits POST /api/students/register-with-photo
+    const payload = { ...form, photo: photo.value.split(',')[1] }
     const response = await api.post('/students/register-with-photo', payload)
-
-    // Auto-login: store the token + user returned from backend
     const { token, ...userData } = response.data
     auth.setSession(token, userData)
-
-    // Stop camera
     stream.value?.getTracks().forEach(t => t.stop())
-
-    // Redirect to student dashboard
     router.push('/student/dashboard')
-
   } catch (err) {
-    const status  = err.response?.status
-    const message = err.response?.data?.message
-
-    if (status === 409) {
-      apiError.value = message || 'Email or student number already exists'
-    } else if (status === 422) {
-      apiError.value = message || 'Face registration failed. Please retake photo.'
-    } else {
-      apiError.value = message || 'Registration failed. Please try again.'
-    }
+    const status = err.response?.status
+    const msg    = err.response?.data?.message
+    if (status === 409)      apiError.value = msg || 'Email or student number already exists'
+    else if (status === 422) apiError.value = msg || 'Face registration failed. Please retake photo.'
+    else                     apiError.value = msg || 'Registration failed. Please try again.'
   } finally {
     loading.value = false
   }
@@ -276,144 +177,70 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-/* PAGE */
-.register-page {
-  min-height: 100vh;
-  background: radial-gradient(circle at top, #0b0f14, #05070a);
-  color: white;
-}
-
-/* HEADER */
-.page-header {
+.register-main {
   display: flex;
-  justify-content: space-between;
-  padding: 18px 22px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  justify-content: center;
+  padding: 40px 16px 60px;
 }
 
-.logo-mark {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.register-card { width: 100%; max-width: 520px; }
 
-.logo-dot {
-  width: 10px;
-  height: 10px;
-  background: #00F0FF;
-  border-radius: 50%;
-  box-shadow: 0 0 12px #00F0FF;
-  
-}
+.card-header { margin-bottom: 24px; }
 
-.logo-text {
+.card-title {
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
 }
+
+.card-sub { font-size: 13px; color: var(--text-secondary); }
 
 .header-chip {
   font-size: 12px;
-  color: #9ca3af;
-  padding: 6px 10px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 999px;
+  color: var(--text-muted);
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
 }
 
-/* MAIN */
-.page-main {
-  display: flex;
-  justify-content: center;
-  padding: 40px 16px;
-}
+.form { display: flex; flex-direction: column; gap: 16px; }
 
-/* CARD */
-.register-card {
-  width: 100%;
-  max-width: 520px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 16px;
-  padding: 24px;
-  backdrop-filter: blur(10px);
-}
-
-/* HEADER */
-.card-header {
-  margin-bottom: 18px;
-}
-
-.title {
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.subtitle {
-  font-size: 13px;
-  color: #9ca3af;
-}
-
-/* FORM */
-.form {
-  display: flex;
-  flex-direction: column;
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 14px;
 }
 
-.field label {
-  font-size: 12px;
-  color: #9ca3af;
-}
+@media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
 
-.input {
-  width: 100%;
-  padding: 10px;
-  margin-top: 4px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(0,240,255,0.15);
-  border-radius: 10px;
-  color: white;
-  outline: none;
-}
+.optional { color: var(--text-muted); font-weight: 400; }
 
-.input:focus {
-  border-color: #00F0FF;
-  box-shadow: 0 0 0 2px rgba(0,240,255,0.1);
-}
+.mb-4 { margin-bottom: 16px; }
 
-.error {
-  font-size: 11px;
-  color: #f87171;
-  margin-top: 4px;
-}
+.loading-row { display: flex; align-items: center; gap: 8px; }
 
-/* CAMERA */
-.camera-section {
-  margin-top: 8px;
-}
-
-.camera-label {
-  font-size: 12px;
-  color: #9ca3af;
-}
+/* BIOMETRIC */
+.biometric-section { display: flex; flex-direction: column; gap: 10px; }
 
 .camera-frame {
   position: relative;
-  height: 320px;
-  margin-top: 8px;
-  border-radius: 14px;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid rgba(0,240,255,0.15);
-  box-shadow: 0 0 20px rgba(0,240,255,0.08);
-  background: black;
+  background: #000;
+  border: 1px solid var(--border-default);
 }
 
-.video {
+.camera-feed {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
-/* SCANNER */
 .scanner-overlay {
   position: absolute;
   inset: 0;
@@ -421,128 +248,48 @@ const handleSubmit = async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
+  pointer-events: none;
 }
 
-.scanner-box {
-  width: 180px;
-  height: 240px;
-  border: 2px solid rgba(0,240,255,0.6);
-  border-radius: 16px;
-  position: relative;
-  overflow: hidden;
+.face-oval {
+  width: 44%;
+  aspect-ratio: 3 / 4;
+  border: 2px dashed var(--accent-border);
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.28);
+  animation: oval-pulse 2.8s ease-in-out infinite;
 }
 
-.scanner-line {
+@keyframes oval-pulse {
+  0%, 100% { border-color: var(--accent-border); }
+  50%       { border-color: rgba(0,216,240,0.55); }
+}
+
+.scanner-hint {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.5);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.captured-overlay {
   position: absolute;
-  width: 100%;
-  height: 2px;
-  background: #00F0FF;
-  animation: scan 2s linear infinite;
-  opacity: 0.8;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
-@keyframes scan {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(240px); }
-}
+.camera-actions { display: flex; }
 
-.scanner-text {
+.login-text {
+  margin-top: 18px;
   font-size: 12px;
-  margin-top: 10px;
-  color: #9ca3af;
-}
-
-/* SUCCESS */
-.success-text {
-  font-size: 12px;
-  color: #34d399;
+  color: var(--text-muted);
   text-align: center;
-  margin-top: 6px;
 }
 
-/* BUTTONS */
-.btn-row {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.btn-secondary {
-  flex: 1;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.04);
-  color: white;
-  cursor: pointer;
-}
-
-.btn-primary {
-  margin-top: 10px;
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(0, 240, 255, 0.25);
-
-  color: #00F0FF;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-
-  cursor: pointer;
-
-  transition: all 0.2s ease;
-
-  position: relative;
-  overflow: hidden;
-}
-
-/* subtle scan glow (NOT flashy) */
-.btn-primary::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    120deg,
-    transparent,
-    rgba(0, 240, 255, 0.08),
-    transparent
-  );
-  transform: translateX(-100%);
-  animation: scanSweep 3.5s linear infinite;
-}
-
-@keyframes scanSweep {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-/* hover feels like system activation */
-.btn-primary:hover {
-  border-color: rgba(0, 240, 255, 0.6);
-  box-shadow: 0 0 10px rgba(0, 240, 255, 0.15);
-  color: #ffffff;
-}
-
-/* active press feel */
-.btn-primary:active {
-  transform: scale(0.98);
-  border-color: #00F0FF;
-}
-
-/* disabled */
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.banner-error {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #f87171;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 13px;
-  margin-bottom: 14px;
-}
+.link { color: var(--accent); text-decoration: none; font-weight: 500; }
+.link:hover { text-decoration: underline; }
 </style>

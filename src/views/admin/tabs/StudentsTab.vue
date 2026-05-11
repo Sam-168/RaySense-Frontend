@@ -1,28 +1,21 @@
 <template>
   <div>
-    <h2 class="tab-title">Students</h2>
+    <h2 class="section-title">Students</h2>
 
-    <!-- SEARCH -->
-    <input
-      v-model="search"
-      class="search-input"
-      placeholder="Search by name or student number..."
-    />
+    <input v-model="search" class="rs-search" placeholder="Search by name or student number..." />
 
-    <!-- LOADING -->
-    <div v-if="loading" class="loading-state">
-      <div class="spinner"></div>
+    <div v-if="loading" class="rs-loading">
+      <div class="rs-spinner"></div>
     </div>
 
-    <!-- TABLE -->
-    <div v-else class="table-wrap">
-      <table class="table">
+    <div v-else class="rs-table-wrap">
+      <table class="rs-table">
         <thead>
           <tr>
             <th>Name</th>
             <th>Student #</th>
             <th>Email</th>
-            <th>Face Enrolled</th>
+            <th>Face</th>
             <th>Sections</th>
             <th>Status</th>
           </tr>
@@ -33,13 +26,13 @@
             <td>{{ student.studentNumber }}</td>
             <td>{{ student.email }}</td>
             <td>
-              <span class="face-badge" :class="student.hasFaceEncoding ? 'enrolled' : 'missing'">
-                {{ student.hasFaceEncoding ? '✓ Enrolled' : '✗ Missing' }}
+              <span class="rs-badge" :class="student.hasFaceEncoding ? 'rs-badge--success' : 'rs-badge--danger'">
+                {{ student.hasFaceEncoding ? 'Enrolled' : 'Missing' }}
               </span>
             </td>
             <td>{{ student.enrolledSections }}</td>
             <td>
-              <span class="status-badge" :class="student.isActive ? 'active' : 'inactive'">
+              <span class="rs-badge" :class="student.isActive ? 'rs-badge--success' : 'rs-badge--muted'">
                 {{ student.isActive ? 'Active' : 'Inactive' }}
               </span>
             </td>
@@ -47,7 +40,6 @@
         </tbody>
       </table>
     </div>
-
   </div>
 </template>
 
@@ -62,15 +54,14 @@ const search   = ref('')
 const filteredStudents = computed(() => {
   const q = search.value.toLowerCase()
   return students.value.filter(s =>
-    s.fullName.toLowerCase().includes(q) ||
-    s.studentNumber.toLowerCase().includes(q)
+    s.fullName.toLowerCase().includes(q) || s.studentNumber.toLowerCase().includes(q)
   )
 })
 
 onMounted(async () => {
   try {
-    const response = await api.get('/admin/students')
-    students.value = response.data
+    const res = await api.get('/admin/students')
+    students.value = res.data
   } finally {
     loading.value = false
   }
@@ -78,94 +69,5 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.tab-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
-
-.search-input {
-  width: 100%;
-  padding: 10px 14px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 10px;
-  color: white;
-  font-size: 13px;
-  outline: none;
-  margin-bottom: 16px;
-  box-sizing: border-box;
-}
-
-.search-input:focus { border-color: rgba(0,240,255,0.3); }
-
-.loading-state { display: flex; justify-content: center; padding: 40px; }
-
-.spinner {
-  width: 24px; height: 24px;
-  border: 2px solid rgba(0,240,255,0.2);
-  border-top-color: #00F0FF;
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.table-wrap { overflow-x: auto; }
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.table th {
-  text-align: left;
-  padding: 10px 14px;
-  font-size: 11px;
-  color: #6b7280;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.table td {
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  color: #d1d5db;
-}
-
-.face-badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 999px;
-}
-
-.face-badge.enrolled {
-  background: rgba(16,185,129,0.1);
-  color: #10b981;
-  border: 1px solid rgba(16,185,129,0.2);
-}
-
-.face-badge.missing {
-  background: rgba(239,68,68,0.1);
-  color: #f87171;
-  border: 1px solid rgba(239,68,68,0.2);
-}
-
-.status-badge {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 999px;
-}
-
-.status-badge.active {
-  background: rgba(16,185,129,0.1);
-  color: #10b981;
-  border: 1px solid rgba(16,185,129,0.2);
-}
-
-.status-badge.inactive {
-  background: rgba(107,114,128,0.1);
-  color: #6b7280;
-  border: 1px solid rgba(107,114,128,0.2);
-}
+.section-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
 </style>
