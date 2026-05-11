@@ -1,39 +1,40 @@
 <template>
-  <div class="mark-page">
+  <div class="rs-page">
 
-    <!-- HEADER -->
-    <header class="page-header">
-      <div class="logo-mark">
-        <div class="logo-dot"></div>
-        <span class="logo-text">RaySense</span>
+    <header class="rs-header">
+      <div class="rs-logo">
+        <div class="rs-logo-dot"></div>
+        RaySense
       </div>
-      <button class="back-btn" @click="$router.push('/student/dashboard')">
+      <button class="btn btn-ghost btn--sm" @click="$router.push('/student/dashboard')">
         ← Back
       </button>
     </header>
 
-    <main class="page-main">
+    <main class="rs-main">
 
-      <!-- SESSION INFO -->
-      <div v-if="sessionInfo" class="session-banner">
+      <!-- SESSION BANNER -->
+      <div v-if="sessionInfo" class="rs-card session-banner">
         <div>
-          <span class="session-module">{{ sessionInfo.sectionName }}</span>
+          <span class="rs-badge rs-badge--accent" style="margin-bottom: 6px; display: inline-block;">
+            {{ sessionInfo.sectionName }}
+          </span>
           <p class="session-name">{{ sessionInfo.moduleName }}</p>
           <p class="session-lecturer">{{ sessionInfo.lecturerName }}</p>
         </div>
-        <div class="pulse-wrap">
-          <span class="pulse-dot"></span>
-          <span class="live-text">LIVE</span>
+        <div class="live-indicator">
+          <span class="rs-dot rs-dot--success rs-dot--pulse"></span>
+          <span class="live-text">Live</span>
         </div>
       </div>
 
-      <!-- SUCCESS STATE -->
+      <!-- SUCCESS -->
       <div v-if="success" class="success-state">
         <div class="success-icon">✓</div>
-        <h2 class="success-title">Attendance Marked!</h2>
+        <h2 class="success-title">Attendance marked</h2>
         <p class="success-sub">{{ successMessage }}</p>
-        <button class="done-btn" @click="$router.push('/student/dashboard')">
-          Back to Dashboard
+        <button class="btn btn-accent btn--lg" @click="$router.push('/student/dashboard')">
+          Back to dashboard
         </button>
       </div>
 
@@ -41,55 +42,42 @@
       <div v-else class="camera-section">
 
         <div class="camera-frame">
+          <video v-if="!photo" ref="video" autoplay playsinline class="camera-feed"></video>
+          <img v-else :src="photo" class="camera-feed" />
 
-          <!-- VIDEO -->
-          <video
-            v-if="!photo"
-            ref="video"
-            autoplay
-            playsinline
-            class="video"
-          ></video>
-
-          <!-- PHOTO PREVIEW -->
-          <img v-else :src="photo" class="video" />
-
-          <!-- SCANNER OVERLAY -->
           <div v-if="!photo" class="scanner-overlay">
-            <div class="scanner-box">
-              <div class="scanner-line"></div>
-            </div>
-            <p class="scanner-text">Align your face in the frame</p>
+            <div class="face-oval"></div>
+            <p class="scanner-hint">Align your face within the oval</p>
           </div>
 
-          <!-- PROCESSING OVERLAY -->
           <div v-if="processing" class="processing-overlay">
-            <div class="spinner"></div>
+            <div class="rs-spinner rs-spinner--lg"></div>
             <p>Verifying identity...</p>
           </div>
-
         </div>
 
-        <!-- ERROR -->
-        <div v-if="error" class="banner-error">{{ error }}</div>
+        <div v-if="error" class="rs-alert rs-alert--error" style="margin-bottom: 12px;">{{ error }}</div>
 
-        <!-- BUTTONS -->
         <div class="btn-row">
           <button
             v-if="!photo"
-            class="capture-btn"
+            class="btn btn-accent btn--lg"
             @click="capturePhoto"
             :disabled="!cameraReady"
           >
-            📸 Capture
+            Capture photo
           </button>
 
           <template v-else>
-            <button class="retake-btn" @click="retake" :disabled="processing">
+            <button class="btn btn-ghost" style="flex: 0 0 auto;" @click="retake" :disabled="processing">
               Retake
             </button>
-            <button class="submit-btn" @click="submitAttendance" :disabled="processing">
-              {{ processing ? 'Verifying...' : 'Submit' }}
+            <button class="btn btn-accent" style="flex: 1;" @click="submitAttendance" :disabled="processing">
+              <span v-if="!processing">Submit</span>
+              <span v-else class="loading-row">
+                <span class="rs-spinner rs-spinner--sm"></span>
+                Verifying...
+              </span>
             </button>
           </template>
         </div>
@@ -97,7 +85,6 @@
       </div>
 
     </main>
-
   </div>
 </template>
 
@@ -106,53 +93,40 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 
-const route  = useRoute()
-const router = useRouter()
-
+const route     = useRoute()
+const router    = useRouter()
 const sessionId = route.params.sessionId
 
-const video       = ref(null)
-const stream      = ref(null)
-const photo       = ref(null)
-const cameraReady = ref(false)
-const processing  = ref(false)
-const error       = ref('')
-const success     = ref(false)
+const video          = ref(null)
+const stream         = ref(null)
+const photo          = ref(null)
+const cameraReady    = ref(false)
+const processing     = ref(false)
+const error          = ref('')
+const success        = ref(false)
 const successMessage = ref('')
-const sessionInfo = ref(null)
+const sessionInfo    = ref(null)
 
-// ── Load session info ────────────────────────────────────────────────────────
 onMounted(async () => {
-  // Load session details from active sessions
   try {
-    const response = await api.get('/attendance/active-sessions')
-    const sessions = response.data
-    sessionInfo.value = sessions.find(s => s.sessionId == sessionId) || null
-
-    if (!sessionInfo.value) {
-      error.value = 'This session is no longer active.'
-      return
-    }
-  } catch (err) {
+    const res = await api.get('/attendance/active-sessions')
+    sessionInfo.value = res.data.find(s => s.sessionId == sessionId) || null
+    if (!sessionInfo.value) { error.value = 'This session is no longer active.'; return }
+  } catch {
     error.value = 'Failed to load session info.'
   }
 
-  // Start camera
   try {
     stream.value = await navigator.mediaDevices.getUserMedia({ video: true })
     video.value.srcObject = stream.value
     video.value.onloadedmetadata = () => { cameraReady.value = true }
-  } catch (err) {
+  } catch {
     error.value = 'Camera access denied. Please allow camera and refresh.'
   }
 })
 
-// Stop camera on unmount
-onUnmounted(() => {
-  stream.value?.getTracks().forEach(t => t.stop())
-})
+onUnmounted(() => stream.value?.getTracks().forEach(t => t.stop()))
 
-// ── Capture ──────────────────────────────────────────────────────────────────
 const capturePhoto = () => {
   const canvas = document.createElement('canvas')
   canvas.width  = video.value.videoWidth
@@ -162,47 +136,29 @@ const capturePhoto = () => {
   error.value = ''
 }
 
-const retake = () => {
-  photo.value = null
-  error.value = ''
-}
+const retake = () => { photo.value = null; error.value = '' }
 
-// ── Submit ───────────────────────────────────────────────────────────────────
 const submitAttendance = async () => {
   processing.value = true
   error.value = ''
-
   try {
-    // Convert base64 to blob for multipart upload
-    const base64Data = photo.value.split(',')[1]
+    const base64Data     = photo.value.split(',')[1]
     const byteCharacters = atob(base64Data)
-    const byteArray = new Uint8Array(byteCharacters.length)
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteArray[i] = byteCharacters.charCodeAt(i)
-    }
-    const blob = new Blob([byteArray], { type: 'image/jpeg' })
-
+    const byteArray      = new Uint8Array(byteCharacters.length)
+    for (let i = 0; i < byteCharacters.length; i++) byteArray[i] = byteCharacters.charCodeAt(i)
+    const blob     = new Blob([byteArray], { type: 'image/jpeg' })
     const formData = new FormData()
     formData.append('photo', blob, 'attendance.jpg')
-
-    const response = await api.post(
-      `/attendance/sessions/${sessionId}/mark-by-face`,
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    )
-
-    const result = response.data
-
+    const res    = await api.post(`/attendance/sessions/${sessionId}/mark-by-face`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+    const result = res.data
     if (result.success) {
       success.value = true
       successMessage.value = `${result.moduleName} · ${result.time}`
-      // Stop camera
       stream.value?.getTracks().forEach(t => t.stop())
     } else {
       error.value = result.message
-      photo.value = null  // Reset to retake
+      photo.value = null
     }
-
   } catch (err) {
     error.value = err.response?.data?.message || 'Something went wrong. Please try again.'
     photo.value = null
@@ -213,90 +169,20 @@ const submitAttendance = async () => {
 </script>
 
 <style scoped>
-.mark-page {
-  min-height: 100vh;
-  background: radial-gradient(circle at top, #0b0f14, #05070a);
-  color: white;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 18px 22px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-.logo-mark { display: flex; align-items: center; gap: 10px; }
-
-.logo-dot {
-  width: 10px; height: 10px;
-  background: #00F0FF;
-  border-radius: 50%;
-  box-shadow: 0 0 12px #00F0FF;
-}
-
-.logo-text { font-weight: 700; }
-
-.back-btn {
-  font-size: 13px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.04);
-  color: #9ca3af;
-  cursor: pointer;
-}
-
-.page-main {
-  padding: 20px 16px;
-  max-width: 520px;
-  margin: 0 auto;
-}
-
-/* SESSION BANNER */
 .session-banner {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(0,102,255,0.06);
-  border: 1px solid rgba(0,102,255,0.15);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-color: var(--brand-border);
+  
   margin-bottom: 20px;
 }
 
-.session-module {
-  font-size: 11px;
-  font-weight: 700;
-  color: #00F0FF;
-  background: rgba(0,240,255,0.08);
-  border: 1px solid rgba(0,240,255,0.2);
-  padding: 2px 8px;
-  border-radius: 999px;
-  display: inline-block;
-  margin-bottom: 4px;
-}
+.session-name     { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.session-lecturer { font-size: 12px; color: var(--text-secondary); }
 
-.session-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-
-.session-lecturer { font-size: 12px; color: #9ca3af; }
-
-.pulse-wrap { display: flex; align-items: center; gap: 6px; }
-
-.pulse-dot {
-  width: 8px; height: 8px;
-  background: #10b981;
-  border-radius: 50%;
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.5; transform: scale(0.8); }
-}
-
-.live-text { font-size: 11px; font-weight: 700; color: #10b981; }
+.live-indicator { display: flex; align-items: center; gap: 7px; }
+.live-text { font-size: 11px; font-weight: 600; color: var(--success); }
 
 /* SUCCESS */
 .success-state {
@@ -308,51 +194,37 @@ const submitAttendance = async () => {
 }
 
 .success-icon {
-  width: 64px; height: 64px;
-  background: rgba(16,185,129,0.1);
-  border: 2px solid rgba(16,185,129,0.3);
+  width: 64px;
+  height: 64px;
+  background: var(--success-dim);
+  border: 1px solid var(--success-border);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
-  color: #10b981;
+  font-size: 26px;
+  color: var(--success);
   margin-bottom: 20px;
 }
 
-.success-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-
-.success-sub { font-size: 14px; color: #9ca3af; margin-bottom: 28px; }
-
-.done-btn {
-  padding: 12px 28px;
-  border-radius: 10px;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(0,240,255,0.25);
-  color: #00F0FF;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.done-btn:hover { border-color: rgba(0,240,255,0.6); }
+.success-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+.success-sub   { font-size: 13px; color: var(--text-secondary); margin-bottom: 28px; max-width: 260px; }
 
 /* CAMERA */
-.camera-section { width: 100%; }
+.camera-section { display: flex; flex-direction: column; gap: 14px; }
 
 .camera-frame {
   position: relative;
-  height: 380px;
-  border-radius: 16px;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 1px solid rgba(0,240,255,0.15);
-  background: black;
-  margin-bottom: 14px;
+  background: #000;
+  border: 1px solid var(--border-default);
 }
 
-.video { width: 100%; height: 100%; object-fit: cover; }
+.camera-feed { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-/* SCANNER */
 .scanner-overlay {
   position: absolute;
   inset: 0;
@@ -360,118 +232,48 @@ const submitAttendance = async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
+  pointer-events: none;
 }
 
-.scanner-box {
-  width: 200px; height: 260px;
-  border: 2px solid rgba(0,240,255,0.6);
-  border-radius: 16px;
-  position: relative;
-  overflow: hidden;
+.face-oval {
+  width: 48%;
+  aspect-ratio: 3 / 4;
+  border: 2px dashed var(--accent-border);
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.3);
+  animation: oval-pulse 2.8s ease-in-out infinite;
 }
 
-.scanner-line {
-  position: absolute;
-  width: 100%;
-  height: 2px;
-  background: #00F0FF;
-  animation: scan 2s linear infinite;
-  opacity: 0.8;
+@keyframes oval-pulse {
+  0%, 100% { border-color: var(--accent-border); }
+  50%       { border-color: rgba(0,216,240,0.55); }
 }
 
-@keyframes scan {
-  0%   { transform: translateY(0); }
-  100% { transform: translateY(260px); }
+.scanner-hint {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  background: rgba(0,0,0,0.5);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
 }
 
-.scanner-text {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 12px;
-}
-
-/* PROCESSING */
 .processing-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(5, 7, 10, 0.85);
+  background: rgba(5,7,10,0.82);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 14px;
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--text-secondary);
 }
 
-.spinner {
-  width: 32px; height: 32px;
-  border: 2px solid rgba(0,240,255,0.2);
-  border-top-color: #00F0FF;
-  border-radius: 50%;
-  animation: spin 0.9s linear infinite;
-}
+.btn-row { display: flex; gap: 10px; }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+.loading-row { display: flex; align-items: center; gap: 8px; }
 
-/* ERROR */
-.banner-error {
-  background: rgba(239,68,68,0.1);
-  border: 1px solid rgba(239,68,68,0.3);
-  color: #f87171;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 13px;
-  margin-bottom: 14px;
-}
-
-/* BUTTONS */
-.btn-row {
-  display: flex;
-  gap: 10px;
-}
-
-.capture-btn {
-  flex: 1;
-  padding: 14px;
-  border-radius: 10px;
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(0,240,255,0.25);
-  color: #00F0FF;
-  font-weight: 600;
-  font-size: 15px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.capture-btn:hover { border-color: rgba(0,240,255,0.6); }
-
-.capture-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.retake-btn {
-  padding: 12px 20px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.1);
-  color: #9ca3af;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.submit-btn {
-  flex: 1;
-  padding: 12px;
-  border-radius: 10px;
-  background: rgba(0,102,255,0.15);
-  border: 1px solid rgba(0,102,255,0.4);
-  color: #0066FF;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.submit-btn:hover { background: rgba(0,102,255,0.25); }
-
-.submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.rs-dot--danger { background: var(--danger); }
 </style>

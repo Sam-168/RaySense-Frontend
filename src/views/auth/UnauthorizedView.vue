@@ -1,10 +1,10 @@
 <template>
-  <div class="unauth-page">
-    <div class="unauth-card">
-      <div class="icon">🚫</div>
-      <h1>Access Denied</h1>
-      <p>You don't have permission to view this page.</p>
-      <button class="btn" @click="goHome">Go Back Home</button>
+  <div class="rs-page unauth-page">
+    <div class="unauth-card rs-card">
+      <p class="unauth-code">403</p>
+      <h1 class="unauth-title">Access denied</h1>
+      <p class="unauth-sub">You don't have permission to view this page.</p>
+      <button class="btn btn-ghost" @click="goHome">Go back home</button>
     </div>
   </div>
 </template>
@@ -15,55 +15,40 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const auth   = useAuthStore()
-
-const goHome = () => {
-  router.push(auth.getHomeRoute())
-}
+const goHome = () => router.push(auth.getHomeRoute())
 </script>
 
 <style scoped>
 .unauth-page {
-  min-height: 100vh;
-  background: radial-gradient(circle at top, #0b0f14, #05070a);
   display: flex;
   justify-content: center;
   align-items: center;
-  color: white;
 }
 
 .unauth-card {
   text-align: center;
-  padding: 40px;
+  padding: 48px 32px;
+  max-width: 360px;
+  width: 100%;
 }
 
-.icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-
-h1 {
-  font-size: 24px;
+.unauth-code {
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--border-strong);
   margin-bottom: 8px;
 }
 
-p {
-  color: #9ca3af;
-  margin-bottom: 24px;
-}
-
-.btn {
-  background: rgba(0,0,0,0.4);
-  border: 1px solid rgba(0,240,255,0.25);
-  color: #00F0FF;
-  padding: 10px 24px;
-  border-radius: 10px;
-  cursor: pointer;
+.unauth-title {
+  font-size: 20px;
   font-weight: 600;
-  transition: all 0.2s;
+  margin-bottom: 8px;
 }
 
-.btn:hover {
-  border-color: rgba(0,240,255,0.6);
-  box-shadow: 0 0 10px rgba(0,240,255,0.15);
+.unauth-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
 }
 </style>
