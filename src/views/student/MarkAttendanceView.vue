@@ -89,7 +89,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '@/services/api'
 
@@ -136,7 +136,23 @@ const capturePhoto = () => {
   error.value = ''
 }
 
-const retake = () => { photo.value = null; error.value = '' }
+const retake = async () => {
+  photo.value = null
+  
+
+  await nextTick()
+
+  if (video.value && stream.value) {
+    video.value.srcObject = stream.value
+
+    try {
+      await video.value.play()
+      cameraReady.value = true
+    } catch {
+      error.value = 'Failed to restart camera.'
+    }
+  }
+}
 
 const submitAttendance = async () => {
   processing.value = true
@@ -157,11 +173,11 @@ const submitAttendance = async () => {
       stream.value?.getTracks().forEach(t => t.stop())
     } else {
       error.value = result.message
-      photo.value = null
+      await retake()
     }
   } catch (err) {
     error.value = err.response?.data?.message || 'Something went wrong. Please try again.'
-    photo.value = null
+
   } finally {
     processing.value = false
   }

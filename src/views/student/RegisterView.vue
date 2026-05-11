@@ -104,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/services/api'
@@ -139,7 +139,16 @@ const capturePhoto = () => {
   photo.value = canvas.toDataURL('image/jpeg')
 }
 
-const retake = () => { photo.value = null }
+const retake = async () => {
+  photo.value = null
+
+  await nextTick()
+
+  if (video.value && stream.value) {
+    video.value.srcObject = stream.value
+    await video.value.play()
+  }
+}
 
 const validate = () => {
   Object.keys(errors).forEach(k => errors[k] = '')
