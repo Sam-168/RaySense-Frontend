@@ -1,44 +1,160 @@
-# raysense
+# RaySense Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+A modern Vue.js frontend for the RaySense smart attendance platform.
 
-## Recommended IDE Setup
+## Overview
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+RaySense Frontend is the user-facing client application for the RaySense attendance system. It allows students and lecturers to:
 
-## Recommended Browser Setup
+- Register accounts
+- Login securely using JWT authentication
+- Register facial data
+- Mark attendance using facial recognition
+- Manage attendance sessions
+- View attendance history
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+The frontend communicates with the Spring Boot backend API.
 
-## Customize configuration
+---
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+## Architecture
 
-## Project Setup
+Frontend (Vue.js + Vercel)
+↓
+Spring Boot Backend API (Railway)
+↓
+FastAPI Face Recognition Service (Railway)
+↓
+MySQL Database (Railway)
 
-```sh
+---
+
+## Features
+
+- JWT Authentication
+- Student & Lecturer roles
+- Face registration
+- Attendance tracking
+- Responsive UI
+- REST API integration
+- Production deployment on Vercel
+
+---
+
+## Tech Stack
+
+- Vue.js
+- Vite
+- Axios
+- Vue Router
+- JavaScript
+- CSS
+- Vercel
+
+---
+
+## Environment Variables
+
+### `.env.development`
+
+```env
+VITE_API_BASE_URL=http://localhost:8080/api
+```
+
+### `.env.production`
+
+```env
+VITE_API_BASE_URL=https://your-backend.up.railway.app/api
+```
+
+---
+
+## Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/yourusername/raysense-frontend.git
+```
+
+Navigate into the project:
+
+```bash
+cd raysense-frontend
+```
+
+Install dependencies:
+
+```bash
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+Run development server:
 
-```sh
+```bash
 npm run dev
 ```
 
-### Compile and Minify for Production
+---
 
-```sh
+## Build for Production
+
+```bash
 npm run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+---
 
-```sh
-npm run lint
+## Deployment
+
+The frontend is deployed using Vercel.
+
+### Deployment Steps
+
+1. Push project to GitHub
+2. Import repository into Vercel
+3. Configure environment variables
+4. Deploy
+
+---
+
+## API Integration
+
+Example Axios configuration:
+
+```js
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
 ```
+
+---
+
+## Challenges Solved
+
+- CORS handling between Vercel and Railway
+- Production environment configuration
+- JWT authentication flow
+- Base64 image transfer
+- API endpoint debugging
+- Deployment troubleshooting
+
+---
+
+## Future Improvements
+
+- Real-time attendance updates
+- Push notifications
+- PWA offline support
+- Analytics dashboard
+- Dark mode
+
+---
+
+## License
+
+This project is for educational and portfolio purposes.
